@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TFS Documents</title>
-  <link rel="manifest" href="app.webmanifest">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="app.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
     :root {
       --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#2563eb; --accent2:#e4002b;
@@ -18,187 +18,135 @@
     h1{font-size:22px;margin:8px 0}
     .tag{font-size:12px;color:#cbd5e1}
     .bar{margin:12px 0 20px;border-top:1px solid #1f2937}
-    .toprow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
-    @media (max-width:900px){.toprow{grid-template-columns:1fr 1fr}}
-    @media (max-width:560px){.toprow{grid-template-columns:1fr}}
-    .metric{background:var(--card);padding:14px;border-radius:14px;border:1px solid #1f2937;min-height:78px}
-    .metric .k{font-size:13px;color:var(--muted)}
-    .metric .v{font-size:20px;margin-top:6px}
     .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .controls input[type="search"]{
       background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:12px;padding:10px 12px;min-width:200px;outline:none
     }
-    .btn{
-      display:inline-flex;align-items:center;justify-content:center;gap:8px;
-      background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer
-    }
-    .btn.secondary{background:#111827;color:#fff;border:1px solid #253042}
-    .btn.gray{background:#1f2937;color:#fff;border:1px solid #2b374a}
-    .btn.red{background:var(--accent2)}
-    .hint{font-size:12px;color:var(--muted);margin-left:6px}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
-    @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:14px}
-    .card h3{margin:0 0 10px;font-size:16px}
-    .links{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:560px){.links{grid-template-columns:1fr}}
-    .link{
-      display:block;text-decoration:none;text-align:center;background:var(--btn);color:var(--btnText);
-      padding:12px;border-radius:10px;border:1px solid var(--ring);font-weight:600
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px}
+    .btn{
+      display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnText);
+      border:1px solid #273244;border-radius:12px;padding:12px 14px;font-weight:700;text-decoration:none
     }
-    .footer{margin-top:20px;color:var(--muted);font-size:12px;text-align:center}
-    .status{display:flex;gap:8px;align-items:center}
-    .dot{width:9px;height:9px;border-radius:999px;background:#22c55e}
-    .dot.off{background:#ef4444}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #334155;font-size:12px;color:#cbd5e1}
+    .btn:hover{filter:brightness(1.06)}
+    .primary{background:var(--accent2);border-color:var(--accent2)}
+    .muted{color:var(--muted);font-size:13px}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>📚 TFS Documents</h1>
-      <div class="tag">Offline Doc Hub · tap <b>Download for Offline</b> once, then you’re good in the air</div>
-    </div>
-    <div class="controls">
-      <input id="search" type="search" placeholder="Search titles…" />
-      <button id="downloadAll" class="btn">Download for Offline</button>
-      <button id="checkUpdate" class="btn secondary">Check for Updates</button>
-      <span class="pill" id="ver"></span>
-      <span class="status"><span class="dot" id="netdot"></span><span id="nettxt">Online</span></span>
-    </div>
-  </header>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>🗂️ TFS Documents</h1>
+        <div class="tag">Works offline · Add/remove PDFs via <code>docs/manifest.json</code></div>
+      </div>
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search…" />
+        <button id="offlineBtn" class="btn" style="width:auto;padding:.6rem .9rem">Download for offline</button>
+      </div>
+    </header>
 
-  <div class="bar"></div>
+    <div class="bar"></div>
 
-  <!-- top quick tiles (optional) -->
-  <section class="toprow" id="quick">
-    <div class="metric"><div class="k">FOM</div><div class="v"><a class="link" href="docs/FOM/FOM.pdf">Open FOM</a></div></div>
-    <div class="metric"><div class="k">IOM</div><div class="v"><a class="link" href="docs/IOM/IOM.pdf">Open IOM</a></div></div>
-    <div class="metric"><div class="k">G280 MEL</div><div class="v"><a class="link" href="docs/MEL/G280_MEL.pdf">Open</a></div></div>
-    <div class="metric"><div class="k">G600 MEL</div><div class="v"><a class="link" href="docs/MEL/G600_MEL.pdf">Open</a></div></div>
-  </section>
+    <!-- where sections render -->
+    <div id="sections"></div>
+  </div>
 
-  <section class="grid" id="cards"><!-- populated by JS --></section>
+  <script>
+    // --- tiny helpers ---
+    const $ = (s, r=document)=>r.querySelector(s);
+    const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-  <div class="footer">Tip: add to Home Screen for full-screen app behavior. Version <span id="v2"></span></div>
-</div>
+    // --- draw UI from DOCS ---
+    function renderSections(sections) {
+      const q = ($('#q')?.value || '').trim().toLowerCase();
+      const host = $('#sections');
+      host.innerHTML = '';
 
-<script>
-  // ====== Config (edit this with your doc paths) ======
-  const APP_VERSION = "2025.09.01";
-  // Categories & buttons → PDFs (paths are relative to index.html)
-  const DOCS = [
-    {
-      title: "G600",
-      items: [
-        {label: "Quick Ref",          href: "docs/G600/Quick_Ref.pdf"},
-        {label: "GPS Spoofing",       href: "docs/G600/GPS_Spoofing.pdf"},
-        {label: "Flight Plan Codes",  href: "docs/G600/Flight_Plan_Codes.pdf"},
-        {label: "Cockpit Ref Checklist", href: "docs/G600/Cockpit_Ref_Checklist.pdf"},
-        {label: "Cold WX Ops",        href: "docs/G600/Cold_WX_Ops.pdf"},
-        {label: "GCMS Checklist",     href: "docs/G600/GCMS_Checklist.pdf"},
-        {label: "RNP AR",             href: "docs/G600/RNP_AR.pdf"},
-      ]
-    },
-    {
-      title: "G280",
-      items: [
-        {label: "FMS Default",        href: "docs/G280/FMS_Default.pdf"},
-        {label: "GPS Spoofing",       href: "docs/G280/GPS_Spoofing.pdf"},
-        {label: "Flight Plan Codes",  href: "docs/G280/Flight_Plan_Codes.pdf"},
-        {label: "Collins Quick Ref",  href: "docs/G280/Collins_Quick_Ref.pdf"},
-        {label: "Cold WX Ops",        href: "docs/G280/Cold_WX_Ops.pdf"},
-        {label: "Normal Checklist",   href: "docs/G280/Normal_Checklist.pdf"},
-        {label: "Tow Bar",            href: "docs/G280/Tow_Bar.pdf"},
-      ]
-    },
-    {
-      title: "MISC",
-      items: [
-        {label: "Portable SAT Phone", href: "docs/Misc/Portable_SAT_Phone.pdf"},
-        {label: "SatCom Direct",      href: "docs/Misc/SatCom_Direct.pdf"},
-        {label: "Jump Seat Brief",    href: "docs/Misc/Jump_Seat_Brief.pdf"},
-        {label: "Short Segment",      href: "docs/Misc/Short_Segment.pdf"},
-        {label: "Climb/Descend VIA",  href: "docs/Misc/Climb_Descend_VIA.pdf"},
-        {label: "Local Area Checklist",href: "docs/Misc/Local_Area_Checklist.pdf"},
-        {label: "CDFA Help Sheet",    href: "docs/Misc/CDFA_Help_Sheet.pdf"},
-      ]
+      sections.forEach(sec => {
+        // filter by search
+        const items = (sec.items || []).filter(it =>
+          !q || it.label.toLowerCase().includes(q)
+        );
+        if (!items.length) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'section';
+        wrapper.innerHTML = `<h2>${sec.title || ''}</h2>`;
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        items.forEach(it => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div style="min-height:32px;margin-bottom:10px" class="muted">${it.desc || '&nbsp;'}</div>
+            <a class="btn" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
+          `;
+          grid.appendChild(card);
+        });
+
+        wrapper.appendChild(grid);
+        host.appendChild(wrapper);
+      });
     }
-  ];
-  // ====== End Config ======
 
-  // render cards
-  const cards = document.getElementById('cards');
-  function render(filter=""){
-    cards.innerHTML = "";
-    const f = filter.trim().toLowerCase();
-    DOCS.forEach(cat=>{
-      const visible = cat.items.some(i=> i.label.toLowerCase().includes(f)) || cat.title.toLowerCase().includes(f);
-      if(!visible && f) return;
-      const el = document.createElement('div');
-      el.className = 'card';
-      el.innerHTML = `<h3>${cat.title}</h3><div class="links">${
-        cat.items
-         .filter(i=>!f || i.label.toLowerCase().includes(f))
-         .map(i=>`<a class="link" href="${i.href}" target="_blank" rel="noopener">${i.label}</a>`).join("")
-      }</div>`;
-      cards.appendChild(el);
-    });
-  }
-  render();
+    // --- offline prefetch + service worker registration ---
+    async function wireDownloadForOffline(sections) {
+      // Register SW (if you have sw.js in root)
+      if ('serviceWorker' in navigator) {
+        try { await navigator.serviceWorker.register('sw.js'); } catch (e) { /* ignore */ }
+      }
+      const APP_VERSION = window.APP_VERSION || 'dev';
 
-  // search
-  const search = document.getElementById('search');
-  search.addEventListener('input', e=> render(e.target.value));
-
-  // online/offline indicator
-  const dot = document.getElementById('netdot');
-  const txt = document.getElementById('nettxt');
-  function setNet(){
-    const on = navigator.onLine;
-    dot.classList.toggle('off', !on);
-    txt.textContent = on ? "Online" : "Offline";
-  }
-  window.addEventListener('online', setNet);
-  window.addEventListener('offline', setNet);
-  setNet();
-
-  // version pills
-  document.getElementById('ver').textContent = "v" + APP_VERSION;
-  document.getElementById('v2').textContent = APP_VERSION;
-
-  // service worker registration
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', {scope: './'})
-      .then(async reg => {
-        // tell SW the current version so it can bump caches if you change it
-        if (reg.active) reg.active.postMessage({type:'SET_VERSION', version: APP_VERSION});
-      })
-      .catch(console.error);
-  }
-
-  // download all for offline (precache all docs)
-  document.getElementById('downloadAll').addEventListener('click', async ()=>{
-    if (!navigator.serviceWorker?.controller) {
-      alert("Service worker not active yet. Reload this page once, then try again.");
-      return;
+      const urls = new Set([
+        './', 'index.html', 'app.webmanifest', 'sw.js',
+        ...sections.flatMap(s => (s.items||[]).map(i => i.href))
+      ]);
+      try {
+        const cache = await caches.open('tfs-docs-' + APP_VERSION);
+        await cache.addAll(Array.from(urls));
+        alert('Documents cached for offline use 👍');
+      } catch (e) {
+        console.error(e);
+        alert('Could not cache all documents. Try again after they finish uploading.');
+      }
     }
-    const urls = Array.from(new Set([
-      './', './index.html',
-      ...DOCS.flatMap(c=> c.items.map(i => i.href))
-    ]));
-    navigator.serviceWorker.controller.postMessage({type:'CACHE_DOCS', urls});
-    alert("Caching started in background. Leave this tab open; files will be available offline.");
-  });
 
-  // manual update check
-  document.getElementById('checkUpdate').addEventListener('click', async ()=>{
-    const reg = await navigator.serviceWorker.getRegistration();
-    await reg?.update();
-    alert("Checked for updates. If a new version was found, it will apply on next load.");
-  });
-</script>
+    // search live filtering
+    $('#q')?.addEventListener('input', () => renderSections(window.DOCS || []));
+
+    // click handler for offline button
+    $('#offlineBtn')?.addEventListener('click', () => wireDownloadForOffline(window.DOCS || []));
+  </script>
+
+  <!-- 🔻 put your loader script RIGHT HERE, before </body> -->
+  <script>
+    const APP_VERSION = "2025.09.01-1";       // bump for cache busting
+    let DOCS = [];                            // filled from manifest
+    const MANIFEST_URL = "docs/manifest.json";
+
+    async function loadDocs() {
+      try {
+        const r = await fetch(MANIFEST_URL, { cache: "no-cache" });
+        if (!r.ok) throw new Error("manifest missing");
+        const m = await r.json();
+        DOCS = m.sections || [];
+      } catch {
+        // fallback if manifest not found:
+        DOCS = [{ title: "MISC", items: [] }];
+      }
+      window.DOCS = DOCS; // expose to other scripts/handlers
+      renderSections(DOCS);
+      // (offline prefetch is manual via the button)
+    }
+
+    loadDocs(); // kick off
+  </script>
 </body>
 </html>
