@@ -1,1 +1,13 @@
-
+{
+  "sections": [
+    {
+      "title": "MISC",
+      "items": [
+        { "label": "N183T SAFA", "href": "docs/Portable_SAT_Phone.pdf" },
+        { "label": "N484EM SAFA",      "href": "docs/SatCom_Direct.pdf" },
+        { "label": "N585PL SAFA",    "href": "docs/Jump_Seat_Brief.pdf" },
+        { "label": "N686BE SAFA",      "href": "docs/Short_Segment.pdf" }
+      ]
+    }
+  ]
+}
