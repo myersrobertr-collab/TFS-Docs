@@ -1,10 +1,7 @@
-
 {
   "version": "2025.9.10",
-  "tagMeta": [ "G600", "G280", "Manuals", "Admin", "Misc", "International" ],
-  "sections": [ 
-}
-
+  "tagMeta": ["G600", "G280", "Manuals", "Admin", "Misc", "International"],
+  "sections": [
     {
       "title": "G600",
       "tags": ["G600"],
@@ -12,26 +9,26 @@
         { "label": "G600 Quick Reference", "href": "docs/G600 Quick Reference.pdf", "tags": ["G600", "Manuals"] },
         { "label": "G600 MEL",              "href": "docs/G600 MEL.pdf",              "tags": ["G600", "Manuals"] },
         { "label": "G600 NEF",              "href": "docs/G600 NEF.pdf",              "tags": ["G600", "Manuals"] },
-        { "label": "G600 Cold WX Ops",      "href": "docs/G600 Cold WX.pdf",          "tags": ["G600", "Misc"] }
+        { "label": "G600 Cold WX Ops",      "href": "docs/G600 Cold WX Ops.pdf",      "tags": ["G600", "Misc"] }
       ]
     },
     {
       "title": "G280",
       "tags": ["G280"],
       "items": [
-        { "label": "G280 MEL",                 "href": "docs/G280 MEL.pdf",                 "tags": ["G280", "Manuals"] },
-        { "label": "G280 Norm Checklist",      "href": "docs/G280 Norm Checklist.pdf",      "tags": ["G280", "Manuals"] },
-        { "label": "G280 Cold WX Ops",         "href": "docs/G280 Cold WX.pdf",             "tags": ["G280", "Misc"] },
-        { "label": "G280 Flight Plan Codes",   "href": "docs/G280 FLT Plan Codes.pdf",      "tags": ["G280", "Admin"] }
+        { "label": "G280 MEL",               "href": "docs/G280 MEL.pdf",               "tags": ["G280", "Manuals"] },
+        { "label": "G280 Norm Checklist",    "href": "docs/G280 Norm Checklist.pdf",    "tags": ["G280", "Manuals"] },
+        { "label": "G280 Cold WX Ops",       "href": "docs/G280 Cold WX Ops.pdf",       "tags": ["G280", "Misc"] },
+        { "label": "G280 Flight Plan Codes", "href": "docs/G280 FLT Plan Codes.pdf",    "tags": ["G280", "Admin"] }
       ]
     },
     {
       "title": "Manuals",
       "tags": ["Manuals"],
       "items": [
-        { "label": "FOM", "href": "docs/FOM.pdf", "tags": ["Manuals", "Admin"] },
-        { "label": "IOM", "href": "docs/IOM.pdf", "tags": ["Manuals"] },
-        { "label": "CAM", "href": "docs/CAM.pdf", "tags": ["Manuals"] }
+        { "label": "FOM",            "href": "docs/FOM.pdf",            "tags": ["Manuals", "Admin"] },
+        { "label": "IOM SkyBriefs",  "href": "docs/IOM SkyBriefs.pdf",  "tags": ["Manuals"] },
+        { "label": "CAM",            "href": "docs/CAM.pdf",            "tags": ["Manuals"] }
       ]
     },
     {
@@ -39,7 +36,7 @@
       "tags": ["International"],
       "items": [
         { "label": "Oceanic Crossing Checklist", "href": "docs/Oceanic Crossing Checklist.pdf", "tags": ["International"] },
-        { "label": "NAT Comm Issues",            "href": "docs/NAT Comm Issues.pdf",           "tags": ["International"] },
+        { "label": "NAT Comm Issues",            "href": "docs/NAT Comm Issues.pdf",            "tags": ["International"] },
         { "label": "RNAV RNP",                   "href": "docs/RNAV RNP.pdf",                   "tags": ["International"] }
       ]
     },
@@ -47,10 +44,10 @@
       "title": "Admin & Misc",
       "tags": ["Admin", "Misc"],
       "items": [
-        { "label": "TFS ERP",            "href": "docs/TFS ERP.pdf",            "tags": ["Admin"] },
-        { "label": "TFS Contacts",       "href": "docs/TFS Contacts.pdf",       "tags": ["Admin", "Misc"] },
-        { "label": "Expense Cheat Sheet","href": "docs/Expense Cheat Sheet.pdf","tags": ["Admin"] },
-        { "label": "Short Flight Segment","href": "docs/Short Flight Segment.pdf","tags": ["Misc"] }
+        { "label": "TFS ERP",               "href": "docs/TFS ERP.pdf",               "tags": ["Admin"] },
+        { "label": "TFS Contacts",          "href": "docs/TFS Contacts.pdf",          "tags": ["Admin", "Misc"] },
+        { "label": "Expense Cheat Sheet",   "href": "docs/Expense Cheat Sheet.pdf",   "tags": ["Admin"] },
+        { "label": "Short Flight Segment",  "href": "docs/Short Flight Segment.pdf",  "tags": ["Misc"] }
       ]
     }
   ]
