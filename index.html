@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TFS Documents</title>
+
+  <!-- PWA / meta -->
   <link rel="manifest" href="app.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -11,14 +13,14 @@
 
   <!-- One place to bump the app shell version -->
   <script>
-    window.APP_VERSION  = "2025.9.40";
+    window.APP_VERSION  = "2025.9.50";
     window.MANIFEST_URL = "docs/manifest.json";
     window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
   </script>
 
   <style>
     :root{
-      --bg:#10192a;     /* a bit brighter than before */
+      --bg:#10192a;
       --card:#131c2c;
       --muted:#9ca3af;
       --text:#e5e7eb;
@@ -27,70 +29,124 @@
       --btn:#1f2937;
       --btnText:#f9fafb;
       --ring:#334155;
-      --warn:#f59e0b;   /* yellow for stale/update */
+      --warn:#f59e0b;
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-    .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    h1{font-size:22px;margin:8px 0}
-    .ver{color:#94a3b8;font-size:12px}
-    .bar{margin:12px 0 20px;border-top:1px solid #1f2a40}
 
-    /* tag bar */
-    #chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+    *{ box-sizing:border-box }
+    html,body{
+      margin:0; height:100%;
+      background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+    }
+
+    .wrap{ max-width:1100px; margin:0 auto; padding:16px 18px 40px; }
+    header{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    h1{ font-size:22px; margin:8px 0; }
+    .ver{ color:#94a3b8; font-size:12px; }
+    .bar{ margin:12px 0 20px; border-top:1px solid #1f2a40; }
+
+    /* Tag bar */
+    #chips{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 16px; }
     .tagbtn{
-      background:#0f172a;color:#e2e8f0;border:1px solid #253246;
-      border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;
-      cursor:pointer;transition: filter .12s ease, transform .12s ease;
+      background:#0f172a; color:#e2e8f0; border:1px solid #253246;
+      border-radius:999px; padding:8px 12px; font-size:12px; font-weight:600;
+      cursor:pointer; transition: filter .12s ease, transform .12s ease;
     }
     .tagbtn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
     .tagbtn.active{ background:#1d2a3f; border-color:#334b6b; }
     .tagbtn.emer{ background:var(--emer); border-color:var(--emer); color:#fff; }
 
-    /* section/grid */
-    .section{margin:18px 0}
-    .section h2{font-size:16px;margin:0 0 10px;color:#d0d6df}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .card{background:var(--card);border:1px solid #1f2a40;border-radius:14px;padding:14px}
+    /* Sections / grid */
+    .section{ margin:18px 0; }
+    .section h2{ font-size:16px; margin:0 0 10px; color:#d0d6df; }
+    .grid{
+      display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;
+    }
+    @media (max-width:900px){ .grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
 
-    /* document buttons (20% narrower + friendlier shading) */
+    .card{
+      background:var(--card);
+      border:1px solid #1f2a40;
+      border-radius:14px;
+      padding:14px;
+    }
+
+    /* Base button style (works for header + cards) */
     .btn{
-      display:block;width:80%;max-width:420px;margin:0 auto;text-align:center;
-      color:var(--btnText);text-decoration:none;font-weight:700;border-radius:12px;
-      border:1px solid #273244;padding:12px 14px;
+      display:inline-block;
+      text-align:center;
+      color:var(--btnText);
+      text-decoration:none;
+      font-weight:700;
+      border-radius:12px;
+      border:1px solid #273244;
+      padding:12px 14px;
       background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.10)), var(--btn);
       box-shadow: 0 6px 14px rgba(0,0,0,.18);
       transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
     }
-    @media (max-width:420px){ .btn{width:100%;} }
     .btn:hover{ filter:brightness(1.06); transform: translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.22); }
+
+    /* Card buttons are ~20% narrower and centered */
+    .card .btn{
+      width:80%; max-width:420px; margin:0 auto;
+      display:block;
+    }
+    @media (max-width:420px){ .card .btn{ width:100%; } }
+
+    /* EMER document buttons */
     .btn.emer{
       background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--emer);
       border-color:var(--emer); color:#fff;
     }
 
-    /* header offline button + last cached */
-    .btn-offline{ width:auto;min-width:180px;margin:0;border-radius:10px;padding:.7rem 1rem; }
-    .btn-offline.warn{ background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn); border-color:var(--warn); color:#111; }
-    #lastCache{ font-size:12px;color:#cbd5e1;margin-top:6px;text-align:right }
+    /* Right-side header actions stacked vertically */
+    .header-actions{
+      display:flex; flex-direction:column; align-items:flex-end; gap:10px; margin-top:4px;
+    }
+    .header-actions .btn{ width:auto; min-width:180px; border-radius:10px; padding:.7rem 1rem; }
 
-    /* progress line */
-    #progressWrap{ display:none;width:100%;margin-top:8px;gap:8px;align-items:center }
-    #progressTrack{ position:relative;flex:1;height:10px;background:#0f172a;border:1px solid #253246;border-radius:999px;overflow:hidden }
-    #progressBar{ position:absolute;top:0;left:0;height:100%;width:0%;background:linear-gradient(90deg, #60a5fa, #3b82f6) }
-    #progressText{ font-size:12px;color:#cbd5e1;min-width:38px;text-align:right }
-    /* Yellow warning variant (used by the Hard refresh button) */
+    /* Offline button warn state */
+    .btn-offline.warn{
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn);
+      border-color:var(--warn); color:#111;
+    }
+
+    /* Hard refresh */
     .btn-warn{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn);
-      border-color: var(--warn);
-      color:#111;
-}
-.btn-warn:hover{ filter:brightness(1.05); }
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn);
+      border-color:var(--warn); color:#111;
+      border-radius:10px; padding:.7rem 1rem;
+    }
+    .btn-warn:hover{ filter:brightness(1.05); }
 
+    /* Last cached stamp */
+    .lastCache{
+      font-size:12px; color:#cbd5e1; line-height:1.4; margin:2px 0; text-align:right;
+    }
+    @media (max-width:560px){
+      .header-actions{ align-items:stretch; }
+      .header-actions .btn{ width:100%; }
+      .lastCache{ text-align:center; }
+    }
+
+    /* Progress line spans full width under header */
+    header > #progressWrap{ flex-basis:100%; }
+    #progressWrap{
+      display:none; width:100%; margin-top:8px; gap:8px; align-items:center;
+    }
+    #progressTrack{
+      position:relative; flex:1; height:10px; background:#0f172a;
+      border:1px solid #253246; border-radius:999px; overflow:hidden;
+    }
+    #progressBar{
+      position:absolute; top:0; left:0; height:100%; width:0%;
+      background:linear-gradient(90deg, #60a5fa, #3b82f6);
+    }
+    #progressText{ font-size:12px; color:#cbd5e1; min-width:38px; text-align:right; }
   </style>
 </head>
 <body>
@@ -100,22 +156,26 @@
         <h1>📁 TFS Documents</h1>
         <span id="manifestVer" class="ver">v—</span>
       </div>
-      <div style="text-align:right">
+
+      <div class="header-actions">
         <button id="offlineBtn" class="btn btn-offline">Download for offline</button>
-        <div id="lastCache">Last downloaded: —</div>
-        <button id="forceRefreshBtn" class="btn btn-warn" title="Clear caches & reload">
-          Hard refresh
-        </button>
+        <div id="lastCache" class="lastCache">Last downloaded: —</div>
+        <button id="forceRefreshBtn" class="btn btn-warn" title="Clear caches & reload">Hard refresh</button>
       </div>
+
+      <!-- Full-width progress line -->
       <div id="progressWrap">
         <div id="progressTrack"><div id="progressBar"></div></div>
         <div id="progressText">0%</div>
       </div>
     </header>
 
+    <!-- Filter chips render here -->
     <div id="chips"></div>
+
     <div class="bar"></div>
 
+    <!-- Sections/cards render here -->
     <div id="sections"></div>
   </div>
 
