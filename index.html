@@ -33,6 +33,12 @@
       --emer-edge:#ffd6d8;
       --emer-border:#ff8086;
 
+      /* Caution (muted yellow) */
+      --caution-bg: #2f2a14;      /* deep muted amber base */
+      --caution-top:#3a3216;      /* subtle top gloss */
+      --caution-border:#6b5a1a;   /* bronze edge */
+      --caution-text:#ffeab5;     /* readable warm text */
+
       --radius:14px;
     }
 
@@ -51,12 +57,14 @@
     .app{max-width:1100px;margin:36px auto 72px;padding:0 16px;}
 
     header{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;
     }
     .title{font-size:22px;letter-spacing:.2px;font-weight:650}
     .subtle{color:var(--muted);font-size:13px}
+    .small{font-size:12px}
 
     .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .toolbar-meta{margin-top:6px;color:var(--muted)}
 
     /* ----- Buttons & links: 35% narrower + centered ----- */
     button.btn, a.link{
@@ -88,8 +96,8 @@
 
     /* ----- EMER metallic shine (chips AND EMER doc links) ----- */
     .chip--emer,
-    a.link.danger,               /* if your renderer uses .danger for EMER docs */
-    a.link.link--emer{           /* or explicitly add .link--emer */
+    a.link.danger,
+    a.link.link--emer{
       position:relative;overflow:hidden;color:#ffecee;border:1px solid var(--emer-border);
       background:
         linear-gradient(180deg,var(--emer-top) 0%,#e0373f 18%,var(--emer-core) 55%,#6e0f16 80%,var(--emer-bottom) 100%),
@@ -154,10 +162,26 @@
     .doc-card:hover{transform:translateY(-1px);border-color:#2a3a58;box-shadow:0 8px 22px rgba(0,0,0,.25)}
 
     /* ----- Progress ----- */
-    .progress-wrap{display:none;align-items:center;gap:10px;margin:8px 0 2px}
+    .progress-wrap{display:none;align-items:center;gap:10px;margin:10px 0 2px}
     .progress{height:8px;width:240px;border-radius:999px;background:#0e1728;border:1px solid #25324b;overflow:hidden}
     .progress>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#46b5e1,#2eaadc);transition:width .15s ease}
     .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid #263247;background:#121826;color:var(--muted)}
+
+    /* ----- Update notice (muted yellow box) ----- */
+    .notice{display:none;margin:10px 0 8px}
+    .notice--warn{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:12px;
+      background:linear-gradient(180deg,var(--caution-top),var(--caution-bg));
+      color:var(--caution-text);
+      border:1px solid var(--caution-border);
+      box-shadow:0 6px 18px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .notice__dot{
+      width:10px;height:10px;border-radius:50%;
+      background:#f6cf6a;box-shadow:0 0 0 6px rgba(246,207,106,.1);
+      flex:0 0 auto;
+    }
 
     /* ----- Focus visibility (keyboard) ----- */
     button.btn:focus-visible, a.link:focus-visible, .chip:focus-visible{
@@ -173,11 +197,20 @@
         <div class="title">TFS Documents</div>
         <div class="subtle" id="meta" aria-live="polite"></div>
       </div>
-      <div class="toolbar">
-        <button class="btn" id="btnDownload" type="button" aria-label="Download or update all documents for offline use">Download Docs</button>
-        <button class="btn danger" id="btnRemove" type="button" aria-label="Remove cached documents and reset">Remove Docs</button>
+      <div>
+        <div class="toolbar">
+          <button class="btn" id="btnDownload" type="button" aria-label="Download or update all documents for offline use">Download Docs</button>
+          <button class="btn danger" id="btnRemove" type="button" aria-label="Remove cached documents and reset">Remove Docs</button>
+        </div>
+        <div class="toolbar-meta small" id="lastDownloaded" aria-live="polite">Last download: —</div>
       </div>
     </header>
+
+    <!-- Yellow caution notice when an update is available -->
+    <div class="notice" id="updateNotice" role="status" aria-live="polite" aria-atomic="true">
+      <span class="notice__dot" aria-hidden="true"></span>
+      <span id="updateText"></span>
+    </div>
 
     <!-- Progress -->
     <div class="progress-wrap" id="progressWrap" aria-hidden="true">
@@ -209,6 +242,98 @@
 
   <!-- App logic -->
   <script src="app.js" defer></script>
+
+  <!-- Minimal helpers for update notice + last download stamp -->
+  <script>
+    (function () {
+      const LAST_KEY = "tfsDocs.lastDownloadAt";
+
+      function formatTs(iso) {
+        try {
+          const d = typeof iso === "string" && /^\d+$/.test(iso) ? new Date(+iso) : new Date(iso);
+          if (isNaN(d)) return null;
+          return d.toLocaleString(undefined, { year:"numeric", month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+        } catch { return null; }
+      }
+
+      // Render "Last download" from localStorage if present
+      function renderLast() {
+        const el = document.getElementById("lastDownloaded");
+        const raw = localStorage.getItem(LAST_KEY);
+        const pretty = raw && formatTs(raw);
+        el.textContent = "Last download: " + (pretty || "—");
+      }
+
+      // Observe the progress bar width; when we hit 100%, stamp the time
+      function watchProgress() {
+        const bar = document.getElementById("progressBar");
+        if (!bar) return;
+        const mo = new MutationObserver(() => {
+          const w = (bar.style && bar.style.width || "").trim();
+          if (w === "100%") {
+            const now = new Date().toISOString();
+            localStorage.setItem(LAST_KEY, now);
+            renderLast();
+          }
+        });
+        mo.observe(bar, { attributes: true, attributeFilter: ["style"] });
+      }
+
+      // Yellow "Update Available" box: mirror #meta when it contains an update hint
+      function syncUpdateNotice() {
+        const meta = document.getElementById("meta");
+        const box  = document.getElementById("updateNotice");
+        const text = document.getElementById("updateText");
+        if (!meta || !box || !text) return;
+
+        const s = (meta.textContent || "").trim();
+        const looksLikeUpdate = /update|available|recommend/i.test(s) && !/up to date|current/i.test(s);
+
+        if (s && looksLikeUpdate) {
+          text.textContent = s;
+          box.classList.add("notice--warn");
+          box.style.display = "flex";
+        } else {
+          text.textContent = "";
+          box.classList.remove("notice--warn");
+          box.style.display = "none";
+        }
+      }
+
+      // Optional hooks your app.js can call (if you want explicit control)
+      window.tfsDocs = Object.assign({}, window.tfsDocs, {
+        downloadComplete: function (whenISO) {
+          const iso = whenISO || new Date().toISOString();
+          localStorage.setItem(LAST_KEY, iso);
+          renderLast();
+        },
+        showUpdate: function (msg) {
+          const meta = document.getElementById("meta");
+          if (meta) { meta.textContent = msg; }
+        }
+      });
+
+      // Boot
+      document.addEventListener("DOMContentLoaded", () => {
+        renderLast();
+        watchProgress();
+        syncUpdateNotice();
+
+        // If app.js changes #meta, keep the notice synced
+        const meta = document.getElementById("meta");
+        if (meta) {
+          const moMeta = new MutationObserver(syncUpdateNotice);
+          moMeta.observe(meta, { childList: true, characterData: true, subtree: true });
+        }
+
+        // Also react if some code dispatches a custom event
+        window.addEventListener("tfsdocs:download-complete", (e) => {
+          const when = e && e.detail && e.detail.when;
+          window.tfsDocs.downloadComplete(when);
+        });
+      });
+    })();
+  </script>
 
   <!-- Service Worker -->
   <script>
