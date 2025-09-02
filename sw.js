@@ -1,35 +1,35 @@
-/* TFS Documents – Service Worker (robust PDF handling)
-   - Detect PDFs even with query/hash (e.g., file.pdf#page=2 or file.pdf?dl=1)
-   - Never serve index.html as a fallback for a PDF (avoid "reopens the app")
-   - Cache-first for static assets; network-first for navigations
-   - Basic Range passthrough for PDF viewers
+/* TFS Documents – Service Worker (v11, robust PDF clicks)
+   Key fixes:
+   - Search *all caches* for PDFs (so prefetched docs in any cache name are found)
+   - Never return index.html (HTML) when a PDF was requested
+   - Cache-first for PDFs; Range passthrough; network-first for navigations; cache-first for static assets
 */
 
-const SW_VERSION = 'Test.Ver.2';
+const SW_VERSION = 'tfs-sw-v11';
 const ASSET_CACHE = `assets-${SW_VERSION}`;
-const ASSET_EXTS = ['.js', '.css', '.html', '.webmanifest', '.png', '.jpg', '.jpeg', '.svg', '.ico'];
+const PDF_CACHE   = `pdfs-${SW_VERSION}`;
+const ASSET_EXTS  = ['.js', '.css', '.html', '.webmanifest', '.png', '.jpg', '.jpeg', '.svg', '.ico'];
 
 // Helpers
-function cleanPathname(u) {
-  // Strip trailing slashes from path segments used by some CDNs, keep file name exact
-  return u.pathname.toLowerCase();
-}
+const lowerPath = (u) => u.pathname.toLowerCase();
+const isAsset = (urlObj) => ASSET_EXTS.some(ext => lowerPath(urlObj).endsWith(ext));
+
+// Detect PDF even with query/hash/CDN suffixes
 function looksLikePDF(urlObj, req) {
-  // 1) Path ends with .pdf, or contains ".pdf" before a slash
-  const p = cleanPathname(urlObj);
-  if (p.endsWith('.pdf') || p.includes('.pdf/')) return true;
-
-  // 2) Some servers put .pdf in the last segment but add a trailing slash and query/hash
-  // Already covered by includes('.pdf/'), but we also check search/hash just in case:
-  if (urlObj.search.toLowerCase().includes('.pdf') || urlObj.hash.toLowerCase().includes('.pdf')) return true;
-
-  // 3) Content negotiation hint (not always present)
+  const p = lowerPath(urlObj);
+  if (p.endsWith('.pdf')) return true;
+  if (p.includes('.pdf/')) return true;               // e.g., /file.pdf/preview
+  if (urlObj.search.toLowerCase().includes('.pdf')) return true;
+  if (urlObj.hash.toLowerCase().includes('.pdf')) return true;
   const accept = req.headers.get('accept') || '';
   if (accept.includes('application/pdf')) return true;
-
   return false;
 }
-const isAsset = (urlObj) => ASSET_EXTS.some(ext => cleanPathname(urlObj).endsWith(ext));
+
+// Match in any cache (not just our own)
+async function matchAnyCache(req) {
+  try { return await caches.match(req); } catch { return null; }
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -39,7 +39,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(
-      keys.map(k => (k.startsWith('assets-') && k !== ASSET_CACHE) ? caches.delete(k) : Promise.resolve())
+      keys.map(k => (k.startsWith('assets-') || k.startsWith('pdfs-')) && k !== ASSET_CACHE && k !== PDF_CACHE
+        ? caches.delete(k)
+        : Promise.resolve())
     );
   })());
   self.clients.claim();
@@ -53,43 +55,47 @@ self.addEventListener('fetch', (event) => {
   const wantsRange = req.headers.has('range');
   const pdfLike = looksLikePDF(url, req);
 
-  // (A) PDF (or PDF-like) requests — cache-first + Range passthrough
+  // (A) PDF (or PDF-like) requests: cache-first + Range passthrough
   if (pdfLike) {
     event.respondWith((async () => {
       try {
-        const cache = await caches.open(ASSET_CACHE);
-
-        // Range requests: stream from network (viewer does chunked reads)
+        // Range requests: stream from network; if it fails, try *any* cache
         if (wantsRange) {
           const net = await fetch(req);
-          // If network fails, try cache; DO NOT return index.html
           if (!net || !net.ok) {
-            const cached = await cache.match(req);
+            const cached = await matchAnyCache(req);
             if (cached) return cached;
             return new Response('PDF unavailable (network error).', { status: 502 });
           }
           return net;
         }
 
-        // Non-range: cache-first for offline usage
-        const cached = await cache.match(req);
-        if (cached) return cached;
+        // Non-range: cache-first from ANY cache
+        const cachedAny = await matchAnyCache(req);
+        if (cachedAny) return cachedAny;
 
+        // Otherwise fetch; only accept non-HTML for a PDF request
         const net = await fetch(req, { cache: 'no-cache' });
+        const ct = (net.headers.get('content-type') || '').toLowerCase();
+        if (ct.includes('text/html')) {
+          // This is likely an SPA fallback (index.html). Do NOT serve it for PDFs.
+          return new Response('PDF not found (got HTML).', { status: 404 });
+        }
+
+        // Store successful PDF responses in a dedicated cache for speed/offline
         if (net && net.ok) {
-          // Cache only successful responses
+          const cache = await caches.open(PDF_CACHE);
           cache.put(req, net.clone());
         }
-        return net.ok ? net : new Response('PDF not found.', { status: net.status || 404 });
-      } catch (e) {
-        // Never return app shell for a PDF
+        return net;
+      } catch {
         return new Response('PDF unavailable (offline).', { status: 503 });
       }
     })());
     return;
   }
 
-  // (B) HTML navigations (the app)
+  // (B) HTML navigations: network-first with offline fallback
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -116,7 +122,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // (D) JSON / everything else: network-first, cache fallback for resilience
+  // (D) JSON/other: network-first with cached fallback
   event.respondWith((async () => {
     try {
       const net = await fetch(req, { cache: 'no-cache' });
@@ -126,8 +132,7 @@ self.addEventListener('fetch', (event) => {
       }
       return net;
     } catch {
-      const cache = await caches.open(ASSET_CACHE);
-      const cached = await cache.match(req);
+      const cached = await matchAnyCache(req);
       return cached || new Response('Offline.', { status: 503 });
     }
   })());

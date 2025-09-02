@@ -1,7 +1,10 @@
-/* TFS Documents – app shell logic (section header + single-button docs)
-   - Section header shows ONLY right-side "<GROUP> (count)"
+/* TFS Documents – app shell (v11)
+   UI specifics per your request:
+   - Section header: only a right-side "<GROUP> (count)" chip (no left title)
    - Each document renders as a single button with the doc name (e.g., "G280 Cold WX Ops")
-   - Link HREF resolution hardened to avoid relative-path surprises
+   Robustness fixes:
+   - Safer link resolution (handles relative/absolute and encodes spaces)
+   - Prefetch stores original URLs so SW can find them across *any* cache
 */
 
 const STATE = {
@@ -23,9 +26,9 @@ const els = {
   progressLabel: () => document.getElementById('progressLabel'),
 };
 
-const EMER_KEY = 'EMER';
+const EMER_KEY    = 'EMER';
 const STORAGE_KEY = 'tfs-docs:lastDownloadedAt';
-const STALE_DAYS = 14;
+const STALE_DAYS  = 14;
 
 async function init() {
   try {
@@ -121,7 +124,7 @@ function renderSections() {
     const sec = document.createElement('section');
     sec.className = 'section';
 
-    // Header with ONLY right-side "<GROUP> (count)"
+    // Header: ONLY right-side "<GROUP> (count)"
     const head = document.createElement('div');
     head.className = 'section-head';
     const spacer = document.createElement('div');
@@ -146,39 +149,33 @@ function renderSections() {
 
       const a = document.createElement('a');
       a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
-      a.href = resolveHref(item.url);
+      a.href   = resolveHref(item.url);
       a.target = '_blank';
-      a.rel = 'noopener';
+      a.rel    = 'noopener';
       a.textContent = item.label || item.name || 'Document';
-
-      // Optional: quick console breadcrumb to debug path issues
-      a.addEventListener('click', (e) => {
-        if (!a.href) {
-          console.warn('No href for item', item);
-        }
-      });
 
       card.appendChild(a);
       grid.appendChild(card);
     });
 
     body.appendChild(grid);
-    sec.appendChild(head);
     sec.appendChild(body);
+    sec.appendChild(head); // keep DOM order logical: header visually on top via CSS flow
+    sec.insertBefore(head, body); // ensure header above body
+
     mount.appendChild(sec);
   });
 }
 
-// Resolve item URLs robustly (handles "docs/file.pdf", "./docs/file.pdf", "/docs/file.pdf", or absolute)
+// Resolve and lightly encode relative URLs to avoid path/space issues
 function resolveHref(u) {
   if (!u) return '#';
   try {
-    // If absolute, return as-is
-    if (/^https?:\/\//i.test(u)) return u;
-    // If starts with '/', resolve from origin
-    if (u.startsWith('/')) return new URL(u, location.origin).href;
-    // Otherwise resolve relative to current page (works for "docs/...","./docs/...")
-    return new URL(u, location.href).href;
+    if (/^https?:\/\//i.test(u)) return u;                 // absolute
+    if (u.startsWith('/')) return new URL(u, location.origin).href; // root-relative
+    // For relative, encode spaces minimally
+    const safe = u.replace(/ /g, '%20');
+    return new URL(safe, location.href).href;
   } catch {
     return u;
   }
@@ -198,13 +195,16 @@ async function prefetchAll() {
   showProgress(true);
   let done = 0;
 
+  // Use the page-defined cache name for app shell & manifest; PDFs can land in any cache
   const cache = await caches.open(window.CACHE_NAME);
   for (const url of urls) {
     try {
       const res = await fetch(url, { cache: 'no-cache' });
-      if (res.ok) await cache.put(new Request(url), res.clone());
+      if (res && (res.ok || res.type === 'opaque')) {
+        await cache.put(new Request(url), res.clone());
+      }
     } catch {
-      // continue
+      // continue; we still update progress
     } finally {
       done++;
       updateProgress(Math.round((done / urls.length) * 100));
