@@ -8,7 +8,6 @@
       "items": [
         { "label": "TFS ERP",                 "href": "docs/TFS ERP.pdf",                          "tags": ["EMER"] },
          { "label": "TFS Crisis Response",     "href": "docs/TFS Crisis Response.pdf",             "tags": ["EMER"] },
-        { "label": "Traveler Insurance",      "href": "docs/Business Traveler Insurance.pdf",      "tags": ["EMER"] },
         { "label": "Aircraft EMER Inventory", "href": "docs/AC Emer Inventory.pdf",                "tags": ["EMER"] },
         { "label": "ATC Zero",                "href": "docs/ATC Zero.pdf",                        "tags": ["EMER"] }
       ]
@@ -90,6 +89,7 @@
       "tags": ["Admin"],
       "items": [
         { "label": "TFS Contacts",               "href": "docs/TFS Contacts.pdf",                "tags": ["Admin"] },
+        { "label": "Traveler Insurance",      "href": "docs/Business Traveler Insurance.pdf",      "tags": ["Admin"] },
         { "label": "Expense Cheat Sheet",        "href": "docs/Expense Cheat Sheet.pdf",         "tags": ["Admin"] }
       ]
     },
