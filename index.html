@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#121826" />
-  <link rel="manifest" href="app.webmanifest" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#121826">
+  <link rel="manifest" href="app.webmanifest">
   <title>TFS Documents</title>
 
   <style>
-    :root{
+    :root {
       --bg: #0f1420;
       --panel: #121826;
       --text: #e7ebf3;
@@ -49,34 +49,16 @@
       margin-bottom: 16px;
     }
 
-    .title {
-      font-size: 22px;
-      letter-spacing: .2px;
-      font-weight: 650;
-    }
+    .title { font-size: 22px; letter-spacing: .2px; font-weight: 650; }
+    .subtle { color: var(--muted); font-size: 13px; }
 
-    .subtle {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
     button.btn {
-      background: var(--panel);
-      color: var(--text);
-      border: 1px solid #263247;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: transform .06s ease, border-color .2s ease, box-shadow .2s ease;
+      background: var(--panel); color: var(--text);
+      border: 1px solid #263247; border-radius: 12px;
+      padding: 10px 14px; font-weight: 600; font-size: 14px;
+      cursor: pointer; transition: transform .06s ease, border-color .2s ease, box-shadow .2s ease;
     }
     button.btn:hover { transform: translateY(-1px); border-color: #2f3d57; }
     button.btn:active { transform: translateY(0); }
@@ -154,7 +136,7 @@
       border-bottom: 1px solid #1f2a42;
       background: linear-gradient(180deg, rgba(20,28,44,.6), rgba(14,20,33,.4));
     }
-    .section-title { /* intentionally empty to keep layout; we only show the right-side chip */ }
+    /* .section-title removed to avoid empty ruleset */
     .section-body { padding: 8px 10px 10px; }
 
     .doc-grid {
@@ -223,30 +205,30 @@
       </div>
     </header>
 
-    <!-- Progress bar (back and visible while downloading) -->
+    <!-- Progress bar -->
     <div class="progress-wrap" id="progressWrap" aria-hidden="true">
       <div class="progress"><i id="progressBar" style="width:0%"></i></div>
       <span class="badge" id="progressLabel">0%</span>
     </div>
 
     <!-- Tag filter chips -->
-    <div class="chip-row" id="tagChips" role="tablist" aria-label="Document tag filters"></div>
+    <div class="chip-row" id="tagChips" aria-label="Document tag filters"></div>
 
     <!-- Sections mount -->
     <div id="sections"></div>
   </div>
 
   <script>
-    // Configure paths/versions here
-    window.APP_VERSION  = window.APP_VERSION  || "2025.9.69";
-    window.MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json"; // your docs manifest lives under /docs
+    /* Configure paths/versions here */
+    window.APP_VERSION  = window.APP_VERSION  || "2025.9.50";
+    window.MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json"; /* docs manifest lives under /docs */
     window.CACHE_NAME   = window.CACHE_NAME   || ("tfs-docs-" + window.APP_VERSION);
   </script>
   <script src="app.js" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
       });
     }
   </script>
