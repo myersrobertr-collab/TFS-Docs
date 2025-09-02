@@ -7,12 +7,13 @@
   <link rel="manifest" href="app.webmanifest" />
 
   <!-- 🔧 One-stop version bump -->
-  <script>
-    const APP_VERSION  = "2025.9.1";              // <— bump this ONLY
-    const MANIFEST_URL = `docs/manifest.json?v=${APP_VERSION}`;
-    const CACHE_NAME   = `tfs-docs-${APP_VERSION}`;
-  </script>
-
+  <link rel="manifest" href="app.webmanifest?v=2025.9.1" />
+<script>
+  const APP_VERSION  = "2025.9.1";                         // one-stop bump
+  const MANIFEST_URL = `docs/manifest.json?v=${APP_VERSION}`;
+  const CACHE_NAME   = `tfs-docs-${APP_VERSION}`;
+</script>
+  
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0b0f19" />
