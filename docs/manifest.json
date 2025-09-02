@@ -1,5 +1,5 @@
 {
-  "version": "2025.9.23",
+  "version": "2025.9.24",
   "tagMeta": ["EMER", "G600", "G280", "Manuals", "Checklists", "Admin", "International", "Misc"],
   "sections": [
     {
@@ -25,6 +25,7 @@
         { "label": "G600 Flight Plan Codes",     "href": "docs/G600 Flight Plan Codes.pdf",      "tags": ["G600"] },
         { "label": "G600 GCMS Custom Checklist", "href": "docs/G600 GCMS Custom Checklist.pdf",  "tags": ["G600"] },
         { "label": "G600 GPS Spoofing",          "href": "docs/G600 GPS Spoof.pdf",              "tags": ["G600"] },
+         { "label": "G600 RNP",                  "href": "docs/RNAV RNP.pdf",                    "tags": ["G600"] },
         { "label": "G600 Cold WX Ops",            "href": "docs/G600 Cold WX.pdf",                "tags": ["G600"] }
       ]
     },
