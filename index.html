@@ -2,53 +2,73 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+/>
   <title>TFS Documents</title>
-  <link rel="manifest" href="app.webmanifest?v=2025.09.01-4" />
+
+  <!-- PWA bits -->
+  <link rel="manifest" href="app.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0b0f19" />
+
   <style>
-    :root {
-      --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#2563eb; --accent2:#e4002b;
-      --btn:#1f2937; --btnText:#f9fafb; --ring:#334155;
+    :root{
+      --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb;
+      --line:#1f2937; --accent:#2563eb; --accent2:#e4002b; --btn:#1f2937;
+      --chip:#0f172a; --chipBd:#243041; --ring:#334155;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
     .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     h1{font-size:22px;margin:8px 0}
-    .tag{font-size:12px;color:#cbd5e1}
-    .bar{margin:12px 0 16px;border-top:1px solid #1f2937}
+    .tagline{font-size:12px;color:#cbd5e1}
+    .bar{margin:12px 0 16px;border-top:1px solid var(--line)}
 
     .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .controls input[type="search"]{
-      background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:12px;padding:10px 12px;min-width:200px;outline:none
+    .search{
+      background:#0f172a;color:var(--text);border:1px solid var(--chipBd);
+      border-radius:12px;padding:10px 12px;min-width:220px;outline:none
     }
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+    .btn{
+      background:var(--btn);color:#f9fafb;border:1px solid #273244;border-radius:12px;
+      padding:.7rem 1rem;font-weight:700;cursor:pointer
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .btn.primary{background:var(--accent2);border-color:var(--accent2)}
+    .btn.ghost{background:transparent;border-color:var(--chipBd);color:#cbd5e1}
+
+    .banner{display:none;align-items:center;justify-content:space-between;gap:10px;
+      background:#0f172a;border:1px solid var(--chipBd);border-radius:12px;padding:10px 12px;margin:8px 0}
+    .banner.show{display:flex}
+    .banner .msg{font-size:14px;color:#e5e7eb}
+    .banner .actions{display:flex;gap:8px}
+
+    #filters{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
     .chip{
-      background:#0f172a;color:#e5e7eb;border:1px solid #243041;border-radius:999px;
-      padding:.35rem .75rem;font-weight:700;font-size:.9rem;cursor:pointer;user-select:none
+      background:var(--chip);color:#e5e7eb;border:1px solid var(--chipBd);
+      border-radius:999px;padding:.38rem .7rem;font-weight:600;cursor:pointer
     }
-    .chip.active{background:var(--accent2);border-color:var(--accent2)}
+    .chip.active{background:var(--accent);border-color:var(--accent)}
 
     .section{margin:18px 0}
     .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
-    .desc{min-height:32px;color:var(--muted);font-size:13px}
-    .tags{display:flex;gap:6px;flex-wrap:wrap}
-    .tagpill{font-size:11px;color:#e5e7eb;background:#0f172a;border:1px solid #243041;border-radius:999px;padding:.15rem .5rem}
-    .btn{
-      display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnText);
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+    .muted{color:var(--muted);font-size:13px;min-height:32px;margin-bottom:10px}
+    .link{
+      display:block;width:100%;text-align:center;background:var(--btn);color:#f9fafb;
       border:1px solid #273244;border-radius:12px;padding:12px 14px;font-weight:700;text-decoration:none
     }
-    .btn:hover{filter:brightness(1.06)}
-    .primary{background:var(--accent2);border-color:var(--accent2)}
+    .link:hover{filter:brightness(1.06)}
 
-    /* center ribbons text */
-    div[data-testid="stAlert"] p, .center { text-align:center; }
+    .foot{margin-top:18px;color:#94a3b8;font-size:12px;text-align:center}
   </style>
 </head>
 <body>
@@ -56,93 +76,123 @@
     <header>
       <div>
         <h1>🗂️ TFS Documents</h1>
-        <div class="tag">Works offline</code></div>
+        <div class="tagline">Works offline · Manage content via <code>docs/manifest.json</code></div>
       </div>
       <div class="controls">
-        <input id="q" type="search" placeholder="Search…" />
-        <button id="offlineBtn" class="btn" style="width:auto;padding:.6rem .9rem">Download for offline</button>
+        <input id="q" class="search" type="search" placeholder="Search…" />
+        <button id="offlineBtn" class="btn">Download for offline</button>
+        <button id="installBtn" class="btn ghost" style="display:none">Install app</button>
+      </div>
+      <div id="updateBanner" class="banner">
+        <div class="msg">New or updated files are available.</div>
+        <div class="actions">
+          <button id="refreshBtn" class="btn primary">Update now</button>
+          <button id="dismissUpdate" class="btn ghost">Dismiss</button>
+        </div>
+      </div>
+      <div id="iosBanner" class="banner">
+        <div class="msg">Add to Home Screen for offline: <b>Share</b> → <b>Add to Home Screen</b>.</div>
+        <div class="actions"><button id="dismissIOS" class="btn ghost">Got it</button></div>
       </div>
     </header>
 
-    <!-- Category chips -->
-    <div id="chips" class="chips"></div>
-
     <div class="bar"></div>
 
-    <!-- where sections render -->
+    <!-- Filter chips -->
+    <div id="filters" class="controls"></div>
+
+    <!-- Sections render here -->
     <div id="sections"></div>
+
+    <div class="foot">v<span id="ver"></span></div>
   </div>
 
   <script>
-    // ---------- Config ----------
-    const APP_VERSION = "2025.09.01-5";   // bump on deploy
-    const CATEGORIES = [
-      { id: "ALL", label: "All" },
-      { id: "G600", label: "G600 ✈️" },
-      { id: "G280", label: "G280 🛩️" },
-      { id: "Admin", label: "Admin 🗂️" },
-      { id: "Manuals", label: "Manuals 📘" },
-      { id: "International", label: "International 🌍" },
-      { id: "Misc", label: "Misc 🧩" },
-    ];
-    const MANIFEST_URL = "docs/manifest.json?v=" + APP_VERSION;
+    // ====== CONFIG ======
+    const APP_VERSION = "2025.09.02-1";     // bump on code changes
+    const MANIFEST_URL = "docs/manifest.json";
+    const CACHE_NAME = "tfs-docs-" + APP_VERSION;
 
-    // ---------- State ----------
-    let DOCS = [];            // loaded from manifest
-    let ACTIVE_CAT = "ALL";   // chip filter
-
-    // ---------- Helpers ----------
+    // ====== UTILS ======
     const $ = (s, r=document)=>r.querySelector(s);
-    const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+    const enc = new TextEncoder();
 
-    // ---------- UI: chips ----------
-    function renderChips() {
-      const host = $('#chips');
-      host.innerHTML = '';
-      CATEGORIES.forEach(cat => {
-        const el = document.createElement('div');
-        el.className = 'chip' + (cat.id === ACTIVE_CAT ? ' active' : '');
-        el.textContent = cat.label;
-        el.onclick = () => { ACTIVE_CAT = cat.id; renderSections(DOCS); };
-        host.appendChild(el);
+    async function hashString(s){
+      try{
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(s));
+        return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+      }catch{ return String(s.length); }
+    }
+
+    function inStandalone(){
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+             || window.navigator.standalone === true;
+    }
+
+    // ====== STATE ======
+    let DOCS = [];
+    let TAGS = [];
+    let activeTags = new Set();
+    let deferredPrompt = null;
+
+    // ====== RENDERING ======
+    function renderFilterChips(){
+      const host = $("#filters"); host.innerHTML = "";
+      // "All" chip
+      const all = document.createElement("button");
+      all.className = "chip" + (activeTags.size ? "" : " active");
+      all.textContent = "All";
+      all.onclick = () => { activeTags.clear(); updateHash(); draw(); };
+      host.appendChild(all);
+      TAGS.forEach(tag=>{
+        const b = document.createElement("button");
+        b.className = "chip" + (activeTags.has(tag) ? " active" : "");
+        b.textContent = tag;
+        b.onclick = () => {
+          if(activeTags.has(tag)) activeTags.delete(tag); else activeTags.add(tag);
+          updateHash(); draw();
+        };
+        host.appendChild(b);
       });
     }
 
-    // ---------- UI: sections + cards ----------
-    function itemVisibleByCat(item) {
-      if (ACTIVE_CAT === "ALL") return true;
-      const cats = (item.cats || []).map(String);
-      return cats.includes(ACTIVE_CAT);
+    function matchesTags(itemTags=[], secTags=[]){
+      if (!activeTags.size) return true;
+      const all = new Set([...(itemTags||[]), ...(secTags||[])]);
+      for (const t of activeTags) if (all.has(t)) return true;
+      return false;
     }
 
-    function renderSections(sections) {
-      const q = ($('#q')?.value || '').trim().toLowerCase();
-      const host = $('#sections');
-      host.innerHTML = '';
+    function draw(){
+      renderFilterChips();
+      renderSections(DOCS);
+    }
 
-      sections.forEach(sec => {
-        // filter items by search + category
-        const items = (sec.items || []).filter(it =>
-          (!q || it.label.toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q))
-          && itemVisibleByCat(it)
-        );
-        if (!items.length) return;
+    function renderSections(sections){
+      const q = ($("#q")?.value || "").trim().toLowerCase();
+      const host = $("#sections"); host.innerHTML = "";
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'section';
-        wrapper.innerHTML = `<h2>${sec.title || ''}</h2>`;
+      sections.forEach(sec=>{
+        const items = (sec.items||[]).filter(it=>{
+          const qHit = !q || it.label.toLowerCase().includes(q);
+          const tHit = matchesTags(it.tags, sec.tags);
+          return qHit && tHit;
+        });
+        if(!items.length) return;
 
-        const grid = document.createElement('div');
-        grid.className = 'grid';
+        const wrapper = document.createElement("div");
+        wrapper.className = "section";
+        wrapper.innerHTML = `<h2>${sec.title||""}</h2>`;
 
-        items.forEach(it => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          const tagPills = (it.cats||[]).map(c => `<span class="tagpill">${c}</span>`).join(' ');
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        items.forEach(it=>{
+          const card = document.createElement("div");
+          card.className = "card";
           card.innerHTML = `
-            <div class="desc">${it.desc ? it.desc : '&nbsp;'}</div>
-            <div class="tags">${tagPills}</div>
-            <a class="btn primary" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
+            <div class="muted">${it.desc || "&nbsp;"}</div>
+            <a class="link" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
           `;
           grid.appendChild(card);
         });
@@ -152,45 +202,129 @@
       });
     }
 
-    // ---------- Offline prefetch + SW ----------
-    async function wireDownloadForOffline(sections) {
-      if ('serviceWorker' in navigator) {
-        try { await navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).then(r => r.update?.()); } catch (e) {}
+    function getAllTags(sections){
+      const s = new Set();
+      sections.forEach(sec=>{
+        (sec.tags||[]).forEach(t=>s.add(t));
+        (sec.items||[]).forEach(it=>(it.tags||[]).forEach(t=>s.add(t)));
+      });
+      return [...s];
+    }
+
+    function updateHash(){
+      const list = [...activeTags];
+      if(list.length) location.hash = "tags=" + encodeURIComponent(list.join(","));
+      else location.hash = "";
+    }
+    function readHash(){
+      const m = location.hash.match(/tags=([^&]+)/);
+      if(!m){ activeTags.clear(); return; }
+      const arr = decodeURIComponent(m[1]).split(",").map(s=>s.trim()).filter(Boolean);
+      activeTags = new Set(arr);
+    }
+
+    // ====== MANIFEST / CONTENT LOADING ======
+    async function loadDocsAndDetectUpdates(){
+      const r = await fetch(MANIFEST_URL, { cache: "no-cache" });
+      if(!r.ok) throw new Error("manifest missing");
+      const manifest = await r.json();
+
+      DOCS = manifest.sections || [];
+      TAGS = (manifest.tagMeta && manifest.tagMeta.length)
+              ? manifest.tagMeta
+              : getAllTags(DOCS).sort();
+
+      // update version label
+      $("#ver").textContent = APP_VERSION + (manifest.version ? (" · m" + manifest.version) : "");
+
+      // change detection
+      const raw = JSON.stringify(manifest);
+      const newHash = await hashString(raw);
+      const oldHash = localStorage.getItem("tfsDocs.manifestHash") || "";
+      if (oldHash && newHash !== oldHash){
+        // only show if user has cached at least once (so it's meaningful)
+        if (localStorage.getItem("tfsDocs.cachedOnce") === "1"){
+          $("#updateBanner").classList.add("show");
+        }
       }
-      const urls = new Set([
-        './', 'index.html?v='+APP_VERSION, 'app.webmanifest?v='+APP_VERSION, 'sw.js?v='+APP_VERSION,
-        MANIFEST_URL,
-        ...sections.flatMap(s => (s.items||[]).map(i => i.href))
-      ]);
-      try {
-        const cache = await caches.open('tfs-docs-' + APP_VERSION);
-        await cache.addAll(Array.from(urls));
-        alert('Documents cached for offline use 👍');
-      } catch (e) {
+      localStorage.setItem("tfsDocs.manifestHash", newHash);
+
+      readHash();
+      draw();
+    }
+
+    // ====== OFFLINE / SW ======
+    async function prefetchOffline(){
+      // register SW (best effort)
+      if("serviceWorker" in navigator){
+        try{ await navigator.serviceWorker.register("sw.js"); }catch{}
+      }
+      const urls = new Set(["./","index.html","app.webmanifest","sw.js"]);
+      DOCS.forEach(sec => (sec.items||[]).forEach(it => urls.add(it.href)));
+
+      try{
+        const c = await caches.open(CACHE_NAME);
+        await c.addAll([...urls]);
+        localStorage.setItem("tfsDocs.cachedOnce","1");
+        alert("Documents cached for offline use ✅");
+      }catch(e){
         console.error(e);
-        alert('Could not cache all documents. Try again after the upload finishes or refresh once.');
+        alert("Could not cache everything. Try again once files finish uploading.");
       }
     }
 
-    // events
-    $('#q')?.addEventListener('input', () => renderSections(DOCS));
-    $('#offlineBtn')?.addEventListener('click', () => wireDownloadForOffline(DOCS));
-
-    // ---------- Load manifest + boot ----------
-    async function loadDocs() {
-      try {
-        const r = await fetch(MANIFEST_URL, { cache: "no-cache" });
-        if (!r.ok) throw new Error("manifest missing");
-        const m = await r.json();
-        DOCS = m.sections || [];
-      } catch {
-        DOCS = [{ title: "MISC", items: [] }];
-      }
-      renderChips();
-      renderSections(DOCS);
+    async function hardRefresh(){
+      // blow old caches (only ours)
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(k=>k.startsWith("tfs-docs-")).map(k=>caches.delete(k)));
+      location.reload();
     }
 
-    loadDocs();
+    // ====== INSTALL BANNER ======
+    window.addEventListener("beforeinstallprompt", (e)=>{
+      // desktop & Android
+      e.preventDefault();
+      deferredPrompt = e;
+      if(!inStandalone()) $("#installBtn").style.display = "inline-block";
+    });
+
+    $("#installBtn").addEventListener("click", async ()=>{
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch{}
+      deferredPrompt = null;
+      $("#installBtn").style.display = "none";
+    });
+
+    // iOS smart hint (once)
+    (function showIOSHintOnce(){
+      const ua = navigator.userAgent || "";
+      const isIOS = /iPad|iPhone|iPod/.test(ua);
+      if(isIOS && !inStandalone() && localStorage.getItem("tfsDocs.iosHint") !== "1"){
+        $("#iosBanner").classList.add("show");
+      }
+      $("#dismissIOS").addEventListener("click", ()=>{
+        localStorage.setItem("tfsDocs.iosHint","1");
+        $("#iosBanner").classList.remove("show");
+      });
+    })();
+
+    // ====== WIRE UI ======
+    $("#q").addEventListener("input", draw);
+    $("#offlineBtn").addEventListener("click", prefetchOffline);
+    $("#refreshBtn").addEventListener("click", hardRefresh);
+    $("#dismissUpdate").addEventListener("click", ()=>$("#updateBanner").classList.remove("show"));
+    window.addEventListener("hashchange", ()=>{ readHash(); draw(); });
+
+    // ====== BOOT ======
+    (async function start(){
+      try{ await loadDocsAndDetectUpdates(); }
+      catch(e){ console.error(e); document.querySelector("#sections").innerHTML = "<p>Could not load manifest.</p>"; }
+      // lightweight SW registration to enable offline later
+      if("serviceWorker" in navigator){
+        try{ await navigator.serviceWorker.register("sw.js"); }catch{}
+      }
+    })();
   </script>
 </body>
 </html>
