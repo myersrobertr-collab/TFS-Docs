@@ -1,4 +1,6 @@
 // sw.js — network-first for HTML, cache-first for everything else
+// At the top of sw.js
+const CACHE = 'tfs-docs-2025.9.10';   // keep this in sync with APP_VERSION
 const VER = new URL(self.location.href).searchParams.get('v') || 'dev';
 const CACHE_NAME = `tfs-docs-${VER}`;
 const CORE = [
