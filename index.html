@@ -4,23 +4,24 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TFS Documents</title>
-  <link rel="manifest" href="app.webmanifest?v=2025.9.1" />
+  <link rel="manifest" href="app.webmanifest" />
+
+  <!-- 🔧 ONE place to bump version for cache-busting -->
+  <script>
+    window.APP_VERSION  = "2025.9.2";
+    window.MANIFEST_URL = "docs/manifest.json";
+    window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
+  </script>
+
+  <!-- iOS PWA niceties -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0b0f19" />
 
-  <!-- 🔧 One-stop version bump -->
-  <script>
-    window.APP_VERSION  = "2025.9.1";
-    window.MANIFEST_URL = `docs/manifest.json?v=${APP_VERSION}`;
-    window.CACHE_NAME   = `tfs-docs-${APP_VERSION}`;
-  </script>
-
   <style>
-    :root {
-      --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb;
-      --accent:#2563eb; --accent2:#e4002b; --btn:#1f2937; --btnText:#f9fafb;
-      --ring:#334155; --chip:#0f172a; --chipOn:#172554;
+    :root{
+      --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb; --accent:#2563eb; --accent2:#e4002b;
+      --btn:#1f2937; --btnText:#f9fafb; --ring:#334155; --line:#1f2937;
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
@@ -29,155 +30,178 @@
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     h1{font-size:22px;margin:8px 0}
     .tag{font-size:12px;color:#cbd5e1}
-    .bar{margin:12px 0 20px;border-top:1px solid #1f2937}
+    .bar{margin:12px 0 20px;border-top:1px solid var(--line)}
 
     .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .controls input[type="search"]{
-      background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:12px;
-      padding:10px 12px;min-width:210px;outline:none
-    }
-    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-    .chip{
-      background:var(--chip); color:#cbd5e1; border:1px solid #233144; border-radius:999px;
-      padding:.35rem .7rem; font-size:.85rem; cursor:pointer; user-select:none
-    }
-    .chip.active{ background:var(--chipOn); color:#93c5fd; border-color:#1e3a8a }
+    .search{background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:12px;
+      padding:10px 12px;min-width:220px;outline:none}
     .btn{
-      display:inline-block; background:var(--btn); color:var(--btnText); border:1px solid #273244;
-      border-radius:12px; padding:.65rem .9rem; font-weight:700; text-decoration:none
+      display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+      background:var(--btn);color:var(--btnText);border:1px solid #273244;border-radius:12px;
+      padding:.65rem .9rem;font-weight:700;text-decoration:none;cursor:pointer
     }
-    .btn:hover{ filter:brightness(1.06) }
-    .btn.primary{ background:var(--accent2); border-color:var(--accent2) }
-    .btn.ghost{ background:transparent; color:#cbd5e1 }
+    .btn:hover{filter:brightness(1.06)}
+    .btn.primary{background:var(--accent2);border-color:var(--accent2)}
+    .btn.ghost{background:transparent;border-color:#334155;color:#cbd5e1}
+
+    .pillbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}
+    .pill{
+      padding:.35rem .7rem;border-radius:999px;border:1px solid #273244;background:#0f172a;
+      color:#cbd5e1;font-weight:600;cursor:pointer;font-size:.9rem;user-select:none
+    }
+    .pill.active{background:#183153;color:#fff;border-color:#3b82f6}
+
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .section{margin:18px 0}
-    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
     .muted{color:var(--muted);font-size:13px;min-height:32px;margin-bottom:10px}
-
-    .banner{
-      display:none; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-      background:#0f172a; border:1px solid #243041; border-radius:12px; padding:10px 12px; margin-bottom:12px
+    .linkbtn{
+      display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnText);
+      border:1px solid #273244;border-radius:12px;padding:12px 14px;font-weight:700;text-decoration:none
     }
-    .banner.show{ display:flex }
-    .banner strong{ color:#e5e7eb; font-weight:700 }
-    .right{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
-    .small{ font-size:12px; color:#9ca3af }
-    .footer-note{ margin-top:24px; color:#94a3b8; font-size:12px; text-align:center }
+    .linkbtn:hover{filter:brightness(1.06)}
+
+    /* banners (install / update / download) */
+    .banner{
+      display:none;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      background:#0f172a;border:1px solid #243041;border-radius:12px;padding:10px 12px;margin:10px 0
+    }
+    .banner.show{display:flex}
+    .banner .right{display:flex;gap:8px;align-items:center}
+
+    /* Download progress meter */
+    .meter{
+      width:260px;height:10px;border:1px solid #243041;background:#0b1220;border-radius:999px;
+      overflow:hidden;display:inline-block;vertical-align:middle
+    }
+    .meter .fill{
+      height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#22c55e);
+      transition:width .15s ease
+    }
+
+    /* center text in alerts (if you ever use them) */
+    .center{ text-align:center }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- Update available banner -->
-    <div id="updateBanner" class="banner">
-      <div><strong>Update available.</strong> A newer version of TFS Docs is ready.</div>
-      <div class="right">
-        <button id="updateNow" class="btn primary">Update now</button>
-        <button id="dismissUpdate" class="btn ghost">Later</button>
-      </div>
-    </div>
-
-    <!-- Install (Add to Home Screen) banner -->
-    <div id="installBanner" class="banner">
-      <div><strong>Install TFS Docs</strong> for faster access and offline use.</div>
-      <div class="right">
-        <button id="installBtn" class="btn">Install app</button>
-        <button id="dismissInstall" class="btn ghost">Dismiss</button>
-      </div>
-    </div>
-
     <header>
       <div>
         <h1>🗂️ TFS Documents</h1>
-        <div class="tag">
-          App v<span id="appVer">—</span>
-          <span class="small">· Library v<span id="libVer">—</span></span>
-        </div>
-        <div id="chipRow" class="chips" aria-label="Filters"></div>
+        <div class="tag">Works offline · Manage items in <code>docs/manifest.json</code></div>
       </div>
       <div class="controls">
-        <input id="q" type="search" placeholder="Search…" />
-        <button id="offlineBtn" class="btn" title="Prefetch all PDFs for offline use">Download for offline</button>
+        <input id="q" class="search" type="search" placeholder="Search…" />
+        <button id="offlineBtn" class="btn">Download for offline</button>
+        <button id="installBtn" class="btn ghost" style="display:none">Install app</button>
       </div>
     </header>
 
+    <!-- Tag filter row -->
+    <div id="tagbar" class="pillbar"></div>
+
     <div class="bar"></div>
 
-    <!-- sections render here -->
-    <div id="sections"></div>
+    <!-- Banners -->
+    <div id="installBanner" class="banner">
+      <div><strong>Add to Home Screen</strong> for faster access & true offline mode.</div>
+      <div class="right">
+        <button id="installNow" class="btn primary">Install</button>
+        <button id="installDismiss" class="btn ghost">Dismiss</button>
+      </div>
+    </div>
 
-    <div class="footer-note">If a PDF won’t open offline at first try, tap the
-      <em>Download for offline</em> button once after updates.</div>
+    <div id="updateBanner" class="banner">
+      <div><strong>Updated documents available.</strong> Refresh to load the latest.</div>
+      <div class="right">
+        <button id="updateNow" class="btn primary">Update now</button>
+        <button id="updateDismiss" class="btn ghost">Later</button>
+      </div>
+    </div>
+
+    <div id="dlBanner" class="banner">
+      <div>
+        <strong>Caching documents…</strong>
+        <div class="tag" id="dlStatus">0 / 0</div>
+        <div class="meter"><div class="fill" id="dlFill"></div></div>
+      </div>
+      <div class="right">
+        <button id="dlCancel" class="btn ghost" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <!-- where sections render -->
+    <div id="sections"></div>
   </div>
 
   <script>
-    // ---------- tiny helpers ----------
+    // -------- utilities --------
     const $  = (s, r=document)=>r.querySelector(s);
     const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-    // ---------- global state ----------
-    const APP_VERSION = window.APP_VERSION;
+    const APP_VERSION  = window.APP_VERSION;
     const MANIFEST_URL = window.MANIFEST_URL;
-    const CACHE_NAME = window.CACHE_NAME;
+    const CACHE_NAME   = window.CACHE_NAME;
 
-    let DOCS = [];            // sections[]
-    let TAG_META = [];        // list of tags
-    let LIB_VERSION = "";     // manifest.version
-    const selectedTags = new Set();  // active tag filters
-    let deferredPrompt = null;       // for A2HS
+    let DOCS = [];              // [{title, tags?, items:[{label,href,desc?,tags?}]}]
+    let TAGS = [];              // ["G600","G280",...]
+    let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
 
-    // ---------- UI: tag chips ----------
-    function renderTagChips(tags) {
-      const host = $('#chipRow');
+    // -------- rendering --------
+    function renderTagBar() {
+      const host = $('#tagbar');
       host.innerHTML = '';
-      if (!tags || !tags.length) return;
+      const tags = ['All', ...TAGS];
+
       tags.forEach(tag => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'chip';
-        chip.textContent = tag;
-        chip.onclick = () => {
-          if (selectedTags.has(tag)) selectedTags.delete(tag);
-          else selectedTags.add(tag);
-          chip.classList.toggle('active');
+        const b = document.createElement('button');
+        b.className = 'pill' + (selectedTag === tag ? ' active' : '');
+        b.textContent = tag;
+        b.addEventListener('click', () => {
+          selectedTag = tag;
+          localStorage.setItem('tfs.selectedTag', selectedTag);
+          renderTagBar();
           renderSections(DOCS);
-        };
-        host.appendChild(chip);
+        });
+        host.appendChild(b);
       });
     }
 
-    // ---------- UI: sections/cards ----------
+    function itemMatchesFilters(it, q) {
+      const label = (it.label || '').toLowerCase();
+      const desc  = (it.desc  || '').toLowerCase();
+      const tags  = (it.tags  || []);
+      const tagOk = (selectedTag === 'All') || tags.includes(selectedTag);
+      const qOk   = !q || label.includes(q) || desc.includes(q);
+      return tagOk && qOk;
+    }
+
     function renderSections(sections) {
       const q = ($('#q')?.value || '').trim().toLowerCase();
-      const activeTags = Array.from(selectedTags);
       const host = $('#sections');
       host.innerHTML = '';
 
       sections.forEach(sec => {
-        // filter by tags (section-level)
-        const passTag = !activeTags.length || (sec.tags || []).some(t => selectedTags.has(t));
-        if (!passTag) return;
-
-        // filter items by search
-        const items = (sec.items || []).filter(it =>
-          !q || it.label.toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q)
-        );
+        const items = (sec.items || []).filter(it => itemMatchesFilters(it, q));
         if (!items.length) return;
 
         const wrapper = document.createElement('div');
         wrapper.className = 'section';
         wrapper.innerHTML = `<h2>${sec.title || ''}</h2>`;
-        const grid = document.createElement('div'); grid.className = 'grid';
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
 
         items.forEach(it => {
-          const href = `${it.href}${it.href.includes('?') ? '&' : '?'}v=${APP_VERSION}`;
           const card = document.createElement('div');
           card.className = 'card';
+          const desc = it.desc ? it.desc : '&nbsp;';
           card.innerHTML = `
-            <div class="muted">${it.desc ? it.desc : '&nbsp;'}</div>
-            <a class="btn" href="${href}" target="_blank" rel="noopener">${it.label}</a>
+            <div class="muted">${desc}</div>
+            <a class="linkbtn" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
           `;
           grid.appendChild(card);
         });
@@ -187,109 +211,150 @@
       });
     }
 
-    // ---------- offline prefetch ----------
-    async function prefetchForOffline(sections) {
+    // -------- offline prefetch with progress + cancel --------
+    async function prefetchForOfflineWithProgress(sections) {
       const urls = new Set([
         './',
         `sw.js?v=${APP_VERSION}`,
         `app.webmanifest?v=${APP_VERSION}`,
-        // PDFs(+version)
-        ...sections.flatMap(s => (s.items||[]).map(i =>
-          `${i.href}${i.href.includes('?') ? '&' : '?'}v=${APP_VERSION}`
-        )),
+        // all document URLs (bare so viewing pulls from cache later)
+        ...sections.flatMap(s => (s.items||[]).map(i => i.href))
       ]);
+
+      const list = Array.from(urls);
+      const total = list.length;
+
+      const banner = $('#dlBanner');
+      const fill   = $('#dlFill');
+      const status = $('#dlStatus');
+      const cancelBtn = $('#dlCancel');
+
+      // show UI
+      banner?.classList.add('show');
+      if (status) status.textContent = `0 / ${total}`;
+      if (fill)   fill.style.width = '0%';
+
+      // cancel support
+      let aborted = false;
+      const ctrl = new AbortController();
+      const onCancel = () => {
+        aborted = true;
+        try { ctrl.abort(); } catch {}
+        banner?.classList.remove('show');
+      };
+      cancelBtn?.addEventListener('click', onCancel, { once: true });
+
+      // cache items one-by-one
+      let done = 0;
+      const fails = [];
       try {
         const cache = await caches.open(CACHE_NAME);
-        await cache.addAll(Array.from(urls));
-        alert('Documents cached for offline use 👍');
-      } catch (e) {
-        console.error(e);
-        alert('Could not cache all documents. Try again after files finish uploading.');
+        for (const url of list) {
+          if (aborted) break;
+          try {
+            const res = await fetch(url, { signal: ctrl.signal, cache: 'reload' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await cache.put(url, res.clone());
+          } catch (e) {
+            console.warn('Cache failed:', url, e);
+            fails.push(url);
+          }
+          done++;
+          const pct = Math.round((done / total) * 100);
+          if (status) status.textContent = `${done} / ${total}`;
+          if (fill)   fill.style.width = `${pct}%`;
+        }
+      } finally {
+        if (!aborted) {
+          banner?.classList.remove('show');
+          if (fails.length) {
+            alert(`Cached with ${fails.length} failure(s). Try again once files finish uploading.`);
+          } else {
+            alert('All documents cached for offline use 👍');
+          }
+        }
       }
     }
 
-    // ---------- service worker + update handling ----------
-    async function setupServiceWorker() {
-      if (!('serviceWorker' in navigator)) return;
+    // -------- service worker --------
+    (async () => {
+      if ('serviceWorker' in navigator) {
+        try { await navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`); } catch {}
+      }
+    })();
 
-      const reg = await navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`, { updateViaCache: 'none' });
-
-      // show update banner when a new SW is found
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        if (!newSW) return;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            $('#updateBanner')?.classList.add('show');
-          }
-        });
-      });
-
-      // handle "Update now"
-      $('#updateNow')?.addEventListener('click', async () => {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        regs.forEach(r => r.active?.postMessage({ type: 'SKIP_WAITING' }));
-      });
-
-      // close banner
-      $('#dismissUpdate')?.addEventListener('click', () => {
-        $('#updateBanner')?.classList.remove('show');
-      });
-
-      // reload when the new SW takes control
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-      });
-    }
-
-    // ---------- install (A2HS) banner ----------
+    // -------- install (PWA) banner logic --------
+    let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       $('#installBanner')?.classList.add('show');
+      $('#installBtn').style.display = 'inline-flex';
     });
-    $('#installBtn')?.addEventListener('click', async () => {
+
+    $('#installNow')?.addEventListener('click', async () => {
       if (!deferredPrompt) return;
+      $('#installBanner')?.classList.remove('show');
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       deferredPrompt = null;
+    });
+    $('#installDismiss')?.addEventListener('click', () => {
       $('#installBanner')?.classList.remove('show');
     });
-    $('#dismissInstall')?.addEventListener('click', () => {
-      $('#installBanner')?.classList.remove('show');
-      deferredPrompt = null;
-    });
+    $('#installBtn')?.addEventListener('click', () => $('#installNow')?.click());
 
-    // ---------- manifest load + boot ----------
+    // -------- update banner based on manifest.version --------
+    function showUpdateBanner() { $('#updateBanner')?.classList.add('show'); }
+    function hideUpdateBanner() { $('#updateBanner')?.classList.remove('show'); }
+
+    $('#updateNow')?.addEventListener('click', async () => {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => k.startsWith('tfs-docs-') && k !== CACHE_NAME)
+                              .map(k => caches.delete(k)));
+      } catch {}
+      location.reload();
+    });
+    $('#updateDismiss')?.addEventListener('click', hideUpdateBanner);
+
+    // -------- manifest loader --------
     async function loadDocs() {
       try {
-        const r = await fetch(MANIFEST_URL, { cache: 'no-cache' });
+        const r = await fetch(`${MANIFEST_URL}?v=${APP_VERSION}`, { cache: 'no-cache' });
         if (!r.ok) throw new Error('manifest missing');
         const m = await r.json();
-        DOCS = m.sections || [];
-        TAG_META = m.tagMeta || [];
-        LIB_VERSION = m.version || '';
-      } catch {
-        DOCS = [{ title: 'MISC', tags: ['Misc'], items: [] }];
-        TAG_META = ['Misc'];
-        LIB_VERSION = '';
+
+        // tags and sections
+        TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
+        DOCS = Array.isArray(m.sections) ? m.sections : [];
+
+        // set/update selected tag if needed
+        if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
+          selectedTag = 'All';
+          localStorage.setItem('tfs.selectedTag', selectedTag);
+        }
+
+        // update banner if version changed
+        const prev = localStorage.getItem('tfs.manifestVersion');
+        if (m.version && prev && prev !== m.version) showUpdateBanner();
+        if (m.version) localStorage.setItem('tfs.manifestVersion', m.version);
+      } catch (e) {
+        console.warn('Manifest load failed, using fallback', e);
+        TAGS = [];
+        DOCS = [{ title: "MISC", items: [] }];
       }
-      $('#appVer').textContent = APP_VERSION;
-      $('#libVer').textContent = LIB_VERSION || '—';
-      renderTagChips(TAG_META);
+
+      renderTagBar();
       renderSections(DOCS);
     }
 
-    // ---------- event wiring ----------
+    // -------- wire UI --------
     $('#q')?.addEventListener('input', () => renderSections(DOCS));
-    $('#offlineBtn')?.addEventListener('click', () => prefetchForOffline(DOCS));
+    $('#offlineBtn')?.addEventListener('click', () => prefetchForOfflineWithProgress(DOCS));
 
-    // ---------- start ----------
-    (async function start(){
-      await setupServiceWorker();
-      await loadDocs();
-    })();
+    // kick off
+    loadDocs();
   </script>
 </body>
 </html>
-
