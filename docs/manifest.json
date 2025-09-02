@@ -1,6 +1,6 @@
 {
   "version": "2025.9.15",
-  "tagMeta": ["G600", "G280", "Manuals", "Checklists", "Admin", "EMER", "International", "Misc"],
+  "tagMeta": ["EMER", "G600", "G280", "Manuals", "Checklists", "Admin", "International", "Misc"],
   "sections": [
     {
       "title": "EMER",
