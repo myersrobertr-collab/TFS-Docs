@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TFS Documents</title>
+
+  <!-- PWA manifest -->
   <link rel="manifest" href="app.webmanifest" />
 
-  <!-- One place to bump app version (cache busting) -->
-  
+  <!-- 🔧 Single source of truth for version & manifest URL -->
   <script>
-  window.APP_VERSION  = "2025.9.10";
-  window.MANIFEST_URL = "docs/manifest.json";
-  window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
-</script>
+    window.APP_VERSION  = "2025.9.15";        /* ⬅️ bump this to bust caches */
+    window.MANIFEST_URL = "docs/manifest.json";
+  </script>
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,311 +21,151 @@
   <style>
     :root{
       --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb;
-      --accent:#2563eb; --accent2:#e4002b; --chip:#1b2433; --chipActive:#0f172a;
-      --ring:#334155; --btn:#1f2937; --btnText:#f9fafb; --line:#1f2937;
+      --accent:#2563eb; --accent2:#e4002b; --ring:#334155;
+      --btn:#1f2937; --btnText:#f9fafb;
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-    a{color:inherit}
 
-    .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 44px}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
 
-    /* Header — compact */
-    .hdr{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
-    .ttl{display:flex;align-items:center;gap:.5rem}
-    .ttl h1{font-size:22px;line-height:1;margin:0}
-    .badge{border:1px solid #243041;border-radius:8px;padding:.08rem .45rem;
-      font-size:11px;color:#cbd5e1}
-
-    .controls{display:flex;gap:8px;align-items:center;justify-self:end}
-    .search{
-      background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:10px;
-      padding:8px 10px;min-width:220px;outline:none;font-size:14px
+    /* ===== Hero / banner ===== */
+    .hero{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      padding:14px 16px;border:1px solid #1f2937;border-radius:14px;
+      background:linear-gradient(180deg,#0f1626,#0b101a);
+      box-shadow:0 12px 30px -24px rgba(0,0,0,.6);
     }
-    .btn{
-      display:inline-flex;align-items:center;gap:.5rem;background:var(--btn);color:var(--btnText);
-      border:1px solid #273244;border-radius:10px;padding:.55rem .8rem;font-weight:700;
-      text-decoration:none;font-size:14px
+    .hero-left{min-width:0}
+    .app-title{font-weight:800;letter-spacing:.2px;font-size:20px;margin:0 0 4px 0}
+    .app-sub{font-size:13px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ver-badge{
+      display:inline-block;margin-left:.5rem;padding:.15rem .5rem;border-radius:8px;
+      background:#0f172a;color:#cbd5e1;border:1px solid #334155;font-size:.75rem;
     }
-    .btn:hover{filter:brightness(1.06)}
-    .btn[disabled]{opacity:.55;pointer-events:none}
+    .hero-actions{flex:0 0 auto}
 
-    /* Slim chips bar */
-    .chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+    .bar{margin:12px 0 8px;border-top:1px solid #1f2937}
+    .tagbar{margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px}
+
+    /* ===== chips ===== */
     .chip{
-      background:var(--chip);color:#cbd5e1;border:1px solid #243041;border-radius:999px;
-      padding:.28rem .6rem;font-size:12px;cursor:pointer;user-select:none
+      display:inline-flex;align-items:center;gap:.35rem;
+      padding:.28rem .6rem;border-radius:999px;background:#141a25;color:#cbd5e1;
+      border:1px solid #243041;font-size:.85rem;cursor:pointer;
+      transition:filter .12s ease, transform .12s ease;
+      user-select:none;
     }
-    .chip.active{background:var(--chipActive);color:#fff;border-color:#3b4456}
+    .chip:hover{filter:brightness(1.08);transform:translateY(-1px)}
+    .chip.active{background:#0f172a;color:#fff;border-color:#334155}
 
-    .bar{margin:10px 0 14px;border-top:1px solid var(--line)}
-
-    /* Sections & cards */
-    .section{margin:16px 0}
-    .section h2{font-size:15px;margin:0 0 8px;color:#cbd5e1}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    /* ===== Grid & cards ===== */
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px}
+    .card .desc{min-height:28px;margin-bottom:10px;color:var(--muted);font-size:13px}
 
-    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .docbtn{
-      display:block;width:100%;text-align:center;background:#0f172a;color:#e5e7eb;
-      border:1px solid #243041;border-radius:10px;padding:12px;font-weight:800;text-decoration:none
+    /* ===== Buttons (compact, stylish) ===== */
+    .btn{
+      display:block;width:100%;text-align:center;
+      background:linear-gradient(180deg,#1f2937,#1b2432); color:var(--btnText);
+      border:1px solid #273244;border-radius:10px;padding:10px 12px;
+      font-weight:700;font-size:.95rem;text-decoration:none;letter-spacing:.2px;
+      transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 6px 14px -10px rgba(0,0,0,.6);
     }
-    .docbtn:hover{filter:brightness(1.06)}
-    .muted{color:var(--muted);font-size:12px;min-height:16px;margin-bottom:8px}
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+    .btn:active{transform:translateY(0);filter:brightness(.98)}
+    .btn:focus-visible{outline:none;box-shadow:0 0 0 2px #0b0f19,0 0 0 4px var(--accent)}
+    .btn::after{content:"↗";opacity:.6;margin-left:.45rem;font-weight:600}
+    .btn.no-arrow::after{content:none}
+    .btn.square{border-radius:8px;padding:.6rem .95rem;width:auto}
 
-    /* Banners (install / update) */
-    .banner{display:none;margin:8px 0 10px;padding:10px 12px;border-radius:10px;
-      border:1px solid #334155;background:#0f172a;color:#e5e7eb;
-      align-items:center;justify-content:space-between;gap:10px}
-    .banner.show{display:flex}
-    .banner .actions{display:flex;gap:8px}
-    .banner .actions .btn{padding:.45rem .7rem;border-radius:8px}
+    /* Danger / EMER look */
+    .btn.danger{
+      background:linear-gradient(180deg,#e71f3b,#cf0f28);border-color:#cf0f28;color:#fff;
+    }
+    .section.emer h2{
+      display:inline-block;padding:4px 10px;border-radius:10px;background:var(--accent2);color:#fff;
+    }
+    .card.emer{background:#161017;border-color:#e4002b80}
 
-    /* Offline progress */
-    .progress{display:none;margin:8px 0 0;border-radius:10px;border:1px solid #273244;padding:10px 12px}
-    .progress.show{display:block}
-    .p-track{height:8px;background:#0f172a;border:1px solid #243041;border-radius:999px;overflow:hidden}
-    .p-bar{height:100%;width:0%;background:var(--accent);transition:width .15s linear}
-    .p-text{font-size:12px;color:#cbd5e1;margin-top:6px;display:flex;justify-content:space-between}
+    /* ===== Offline overlay (progress) ===== */
+    #dlOverlay[hidden]{display:none}
+    #dlOverlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:saturate(120%) blur(4px);
+      display:flex;align-items:center;justify-content:center;z-index:9999;
+    }
+    .dl-box{
+      width:min(520px,90vw);background:#0e1522;border:1px solid #263243;border-radius:14px;padding:16px;
+      box-shadow:0 18px 60px -30px rgba(0,0,0,.9)
+    }
+    .dl-title{font-weight:800;margin:0 0 8px 0}
+    .dl-sub{font-size:13px;color:#9ca3af;margin-bottom:12px}
+    .prog{height:10px;border-radius:999px;background:#101826;border:1px solid #233143;overflow:hidden}
+    .fill{height:100%;width:0;background:linear-gradient(90deg,#2563eb,#22d3ee)}
+    .dl-nums{display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-top:6px}
+
+    /* Toast */
+    #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9998}
+    .toast{
+      background:#0f172a;border:1px solid #334155;color:#e5e7eb;border-radius:10px;
+      padding:10px 12px;min-width:240px;box-shadow:0 18px 60px -30px rgba(0,0,0,.8)
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- Compact header -->
-    <div class="hdr">
-      <div class="ttl">
-        <h1>🗂️ TFS Documents</h1>
-        <span id="versionBadge" class="badge"></span>
+    <header class="hero">
+      <div class="hero-left">
+        <div class="app-title">📁 TFS Documents</div>
+        <div class="app-sub">
+          Works offline · Manage in <code>docs/manifest.json</code>
+          <span id="verChip" class="ver-badge"></span>
+        </div>
       </div>
-      <div class="controls">
-        <input id="q" class="search" type="search" placeholder="Search…" />
-        <button id="offlineBtn" class="btn" title="Cache PDFs for offline use">Download for offline</button>
+      <div class="hero-actions">
+        <button id="offlineBtn" class="btn square no-arrow">Download for offline</button>
       </div>
-    </div>
-
-    <!-- Install banner (hidden until eligible) -->
-    <div id="installBanner" class="banner">
-      <div><strong>Install app?</strong> Add to Home Screen for full-screen & offline access.</div>
-      <div class="actions">
-        <button id="installYes" class="btn">Install</button>
-        <button id="installNo"  class="btn" style="background:#111827">Not now</button>
-      </div>
-    </div>
-
-    <!-- Update banner -->
-    <div id="updateBanner" class="banner">
-      <div><strong>New documents available.</strong> Reload to update.</div>
-      <div class="actions">
-        <button id="reloadNow" class="btn" style="background:var(--accent2);border-color:var(--accent2)">Reload</button>
-      </div>
-    </div>
-
-    <!-- Offline progress -->
-    <div id="progBox" class="progress">
-      <div class="p-track"><div id="pbar" class="p-bar"></div></div>
-      <div class="p-text"><span id="pmsg">Preparing…</span><span id="pcnt">0%</span></div>
-    </div>
+    </header>
 
     <div class="bar"></div>
 
-    <!-- Slim tag chips -->
-    <div id="chips" class="chips"></div>
+    <!-- tag chips render here -->
+    <div id="tagbar" class="tagbar"></div>
 
-    <!-- Sections render here -->
+    <!-- sections render here -->
     <div id="sections"></div>
   </div>
 
+  <!-- offline download overlay -->
+  <div id="dlOverlay" hidden>
+    <div class="dl-box">
+      <div class="dl-title">Caching documents for offline use…</div>
+      <div class="dl-sub">You can keep flying; this will continue in the background.</div>
+      <div class="prog"><div id="dlFill" class="fill"></div></div>
+      <div class="dl-nums"><span id="dlCount">0 / 0</span><span id="dlPct">0%</span></div>
+    </div>
+  </div>
+
+  <!-- toast container -->
+  <div id="toast"></div>
+
+  <!-- App script (reads APP_VERSION/MANIFEST_URL from window.*) -->
+  <script src="app.js?v=__STAMP__"></script>
   <script>
-    /* ===== helpers & globals ===== */
-    const $  = (s, r=document) => r.querySelector(s);
-    const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-    const verParam = v => (u) => u.includes('?') ? `${u}&v=${v}` : `${u}?v=${v}`;
-
-    let DOCS = [];
-    let TAGS = [];
-    let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
-    const APP_VERSION  = window.APP_VERSION;
-    const MANIFEST_URL = window.MANIFEST_URL;
-    const CACHE_NAME   = window.CACHE_NAME;
-    const vurl = verParam(APP_VERSION);
-
-    /* ===== service worker ===== */
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
-    }
-
-    /* ===== install banner ===== */
-    let _deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      _deferredPrompt = e;
-      $('#installBanner')?.classList.add('show');
-    });
-    $('#installYes')?.addEventListener('click', async () => {
-      if (_deferredPrompt) {
-        _deferredPrompt.prompt();
-        await _deferredPrompt.userChoice;
-        _deferredPrompt = null;
+    // Stamp cache-bust for the loader itself:
+    (function(){
+      const s = document.currentScript.previousElementSibling; // the app.js tag
+      if (s && s.src.includes("__STAMP__")) {
+        const v = encodeURIComponent(window.APP_VERSION || "dev");
+        s.src = s.src.replace("__STAMP__", v);
       }
-      $('#installBanner')?.classList.remove('show');
-    });
-    $('#installNo')?.addEventListener('click', () => $('#installBanner')?.classList.remove('show'));
-
-    /* ===== update banner ===== */
-    $('#reloadNow')?.addEventListener('click', () => location.reload(true));
-    function showUpdateBanner(){ $('#updateBanner')?.classList.add('show'); }
-
-    /* ===== version badge ===== */
-    function setVersionBadge(manifestVersion, appVersion){
-      const el = $('#versionBadge');
-      if (!el) return;
-      const v = (manifestVersion && String(manifestVersion).trim()) ||
-                (appVersion && String(appVersion).trim()) || '';
-      el.textContent = v ? `v${v}` : '';
-    }
-
-    /* ===== chips ===== */
-    function renderTagBar(){
-      const host = $('#chips');
-      host.innerHTML = '';
-      const mk = (txt, active, on) => {
-        const c = document.createElement('div');
-        c.className = 'chip' + (active ? ' active' : '');
-        c.textContent = txt;
-        c.onclick = on;
-        return c;
-      };
-      host.appendChild(mk('All', selectedTag==='All', () => {
-        selectedTag='All'; localStorage.setItem('tfs.selectedTag','All'); renderTagBar(); renderSections(DOCS);
-      }));
-      TAGS.forEach(tag => {
-        host.appendChild(mk(tag, selectedTag===tag, () => {
-          selectedTag=tag; localStorage.setItem('tfs.selectedTag',tag); renderTagBar(); renderSections(DOCS);
-        }));
-      });
-    }
-
-    /* ===== sections/cards ===== */
-    function renderSections(sections){
-      const q = ($('#q')?.value || '').trim().toLowerCase();
-      const host = $('#sections');
-      host.innerHTML = '';
-
-      sections.forEach(sec => {
-        const items = (sec.items || []).filter(it => {
-          const textOK = !q || it.label.toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q);
-          if (selectedTag === 'All') return textOK;
-          const secTags = sec.tags || [];
-          const itTags  = it.tags || [];
-          const hasTag  = secTags.includes(selectedTag) || itTags.includes(selectedTag);
-          return hasTag && textOK;
-        });
-        if (!items.length) return;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'section';
-        wrapper.innerHTML = `<h2>${sec.title || ''}</h2>`;
-
-        const grid = document.createElement('div');
-        grid.className = 'grid';
-
-        items.forEach(it => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="muted">${it.desc ? it.desc : '&nbsp;'}</div>
-            <a class="docbtn" href="${vurl(it.href)}" target="_blank" rel="noopener">${it.label}</a>
-          `;
-          grid.appendChild(card);
-        });
-
-        wrapper.appendChild(grid);
-        host.appendChild(wrapper);
-      });
-    }
-
-    /* ===== offline prefetch + progress ===== */
-    async function prefetchForOffline(sections){
-      const btn  = $('#offlineBtn');
-      const box  = $('#progBox');
-      const bar  = $('#pbar');
-      const msg  = $('#pmsg');
-      const pcnt = $('#pcnt');
-
-      const urls = new Set([
-        vurl('./'), vurl('index.html'), vurl('app.webmanifest'), vurl('sw.js'),
-        ...sections.flatMap(s => (s.items||[]).map(i => vurl(i.href)))
-      ]);
-
-      btn.disabled = true;
-      box.classList.add('show');
-      bar.style.width = '0%';
-      msg.textContent = 'Starting…';
-      pcnt.textContent = '0%';
-
-      let done = 0, total = urls.size, failed = 0;
-      try {
-        const cache = await caches.open(CACHE_NAME);
-        for (const u of urls) {
-          try {
-            msg.textContent = `Downloading ${done+1} of ${total}`;
-            const res = await fetch(u, { cache: 'no-cache' });
-            if (!res.ok) throw new Error(res.statusText);
-            await cache.put(u, res.clone());
-          } catch {
-            failed++;
-          } finally {
-            done++;
-            const p = Math.round((done/total)*100);
-            bar.style.width = p + '%';
-            pcnt.textContent = p + '%';
-          }
-        }
-        msg.textContent = failed ? `Complete with ${failed} failed.` : 'All documents cached 👍';
-      } catch {
-        msg.textContent = 'Caching failed. Try again.';
-      } finally {
-        setTimeout(() => box.classList.remove('show'), 1100);
-        btn.disabled = false;
-      }
-    }
-
-    $('#offlineBtn')?.addEventListener('click', () => prefetchForOffline(DOCS));
-    $('#q')?.addEventListener('input', () => renderSections(DOCS));
-
-    /* ===== load manifest ===== */
-    async function loadDocs(){
-      try{
-        const r = await fetch(`${MANIFEST_URL}?v=${APP_VERSION}`, { cache:'no-cache' });
-        if (!r.ok) throw new Error('manifest missing');
-        const m = await r.json();
-
-        TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
-        DOCS = Array.isArray(m.sections) ? m.sections : [];
-
-        if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
-          selectedTag = 'All';
-          localStorage.setItem('tfs.selectedTag', 'All');
-        }
-
-        const prev = localStorage.getItem('tfs.manifestVersion');
-        setVersionBadge(m.version, APP_VERSION);
-        if (m.version && prev && prev !== m.version) showUpdateBanner();
-        if (m.version) localStorage.setItem('tfs.manifestVersion', m.version);
-      } catch(e){
-        TAGS = [];
-        DOCS = [{ title:'MISC', items:[] }];
-        setVersionBadge('', APP_VERSION);
-      }
-
-      renderTagBar();
-      renderSections(DOCS);
-    }
-
-    loadDocs();
+    })();
   </script>
 </body>
 </html>
