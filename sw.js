@@ -1,89 +1,101 @@
-/* TFS Documents – Service Worker
-   Changes in this version:
-   - Ensures PDF clicks open the actual PDF (and not the app shell)
-   - Cache-first for assets; network for navigations, with a simple offline fallback
-   - Basic Range request passthrough for PDF viewers
+/* TFS Documents – Service Worker (robust PDF handling)
+   - Detect PDFs even with query/hash (e.g., file.pdf#page=2 or file.pdf?dl=1)
+   - Never serve index.html as a fallback for a PDF (avoid "reopens the app")
+   - Cache-first for static assets; network-first for navigations
+   - Basic Range passthrough for PDF viewers
 */
 
-const SW_VERSION = 'tfs-sw-v7';
+const SW_VERSION = 'tfs-sw-v9';
 const ASSET_CACHE = `assets-${SW_VERSION}`;
-
-// Match simple static assets for cache-first
 const ASSET_EXTS = ['.js', '.css', '.html', '.webmanifest', '.png', '.jpg', '.jpeg', '.svg', '.ico'];
 
-// Utility helpers
-const isPDF = (url) => url.pathname.toLowerCase().endsWith('.pdf');
-const isAsset = (url) => ASSET_EXTS.some(ext => url.pathname.toLowerCase().endsWith(ext));
+// Helpers
+function cleanPathname(u) {
+  // Strip trailing slashes from path segments used by some CDNs, keep file name exact
+  return u.pathname.toLowerCase();
+}
+function looksLikePDF(urlObj, req) {
+  // 1) Path ends with .pdf, or contains ".pdf" before a slash
+  const p = cleanPathname(urlObj);
+  if (p.endsWith('.pdf') || p.includes('.pdf/')) return true;
+
+  // 2) Some servers put .pdf in the last segment but add a trailing slash and query/hash
+  // Already covered by includes('.pdf/'), but we also check search/hash just in case:
+  if (urlObj.search.toLowerCase().includes('.pdf') || urlObj.hash.toLowerCase().includes('.pdf')) return true;
+
+  // 3) Content negotiation hint (not always present)
+  const accept = req.headers.get('accept') || '';
+  if (accept.includes('application/pdf')) return true;
+
+  return false;
+}
+const isAsset = (urlObj) => ASSET_EXTS.some(ext => cleanPathname(urlObj).endsWith(ext));
 
 self.addEventListener('install', (event) => {
-  // no pre-cache required; app prefetch flow handles large files
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    // Clean old caches if you rev SW_VERSION often
     const keys = await caches.keys();
-    await Promise.all(keys.map(k => (k.startsWith('assets-') && k !== ASSET_CACHE) ? caches.delete(k) : Promise.resolve()));
+    await Promise.all(
+      keys.map(k => (k.startsWith('assets-') && k !== ASSET_CACHE) ? caches.delete(k) : Promise.resolve())
+    );
   })());
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Only handle GET
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
   const wantsRange = req.headers.has('range');
-  const pdf = isPDF(url);
+  const pdfLike = looksLikePDF(url, req);
 
-  // (A) PDF handling — let the PDF actually load, not the app shell.
-  // Use cache-first for offline support; support basic Range passthrough.
-  if (pdf) {
+  // (A) PDF (or PDF-like) requests — cache-first + Range passthrough
+  if (pdfLike) {
     event.respondWith((async () => {
       try {
         const cache = await caches.open(ASSET_CACHE);
 
-        // Range requests: pass through to network (viewer will request more chunks)
+        // Range requests: stream from network (viewer does chunked reads)
         if (wantsRange) {
-          const netRes = await fetch(req);
-          if (!netRes || !netRes.ok) {
+          const net = await fetch(req);
+          // If network fails, try cache; DO NOT return index.html
+          if (!net || !net.ok) {
             const cached = await cache.match(req);
-            return cached || netRes;
+            if (cached) return cached;
+            return new Response('PDF unavailable (network error).', { status: 502 });
           }
-          // Optionally cache full-body responses if server sends 200 + Accept-Ranges
-          return netRes;
+          return net;
         }
 
-        // Non-range: cache-first
+        // Non-range: cache-first for offline usage
         const cached = await cache.match(req);
         if (cached) return cached;
 
-        const netRes = await fetch(req, { cache: 'no-cache' });
-        if (netRes && netRes.ok) {
-          cache.put(req, netRes.clone());
+        const net = await fetch(req, { cache: 'no-cache' });
+        if (net && net.ok) {
+          // Cache only successful responses
+          cache.put(req, net.clone());
         }
-        return netRes;
+        return net.ok ? net : new Response('PDF not found.', { status: net.status || 404 });
       } catch (e) {
-        // Last-resort: try any cached index as an offline indicator (not ideal for PDFs)
-        const fallback = await caches.match('index.html');
-        return fallback || new Response('Offline and PDF not cached.', { status: 503 });
+        // Never return app shell for a PDF
+        return new Response('PDF unavailable (offline).', { status: 503 });
       }
     })());
     return;
   }
 
-  // (B) HTML navigations (the app itself)
+  // (B) HTML navigations (the app)
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        // Network first so updates deploy immediately
         const net = await fetch(req);
         return net;
       } catch {
-        // Offline fallback to any cached index
         const cached = await caches.match('index.html');
         return cached || new Response('Offline.', { status: 503 });
       }
@@ -104,11 +116,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // (D) Everything else (e.g., JSON manifest, API): network with gentle fallback; cache updated responses
+  // (D) JSON / everything else: network-first, cache fallback for resilience
   event.respondWith((async () => {
     try {
       const net = await fetch(req, { cache: 'no-cache' });
-      // Optionally cache small text/json for resiliency
       if (net && net.ok && (net.headers.get('content-type') || '').includes('application/json')) {
         const cache = await caches.open(ASSET_CACHE);
         cache.put(req, net.clone());

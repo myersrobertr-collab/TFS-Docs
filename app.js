@@ -1,9 +1,7 @@
-/* TFS Documents – app shell logic
-   Changes in this version:
-   - Section header now shows ONLY a right-side chip: "<GROUP> (count)"
-     (left title area is suppressed)
-   - Doc cards now render a single button that contains the document name
-     (e.g., "G280 Cold WX Ops") — no separate title/meta lines
+/* TFS Documents – app shell logic (section header + single-button docs)
+   - Section header shows ONLY right-side "<GROUP> (count)"
+   - Each document renders as a single button with the doc name (e.g., "G280 Cold WX Ops")
+   - Link HREF resolution hardened to avoid relative-path surprises
 */
 
 const STATE = {
@@ -35,8 +33,6 @@ async function init() {
     if (!res.ok) throw new Error(`Failed to load manifest: ${res.status}`);
     const data = await res.json();
 
-    // Expected structure:
-    // { version, sections: [{ title, tag, items: [{ label, url, tags?:[] }] }], ... }
     STATE.manifestVersion = data.version || '—';
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags     = Array.from(new Set(['ALL', ...collectTags(STATE.sections)]));
@@ -62,7 +58,7 @@ function normalizeSections(sections) {
     }));
     const tag = s.tag || null;
     const count = items.length;
-    return { ...s, items, tag, count };
+    return { ...s, items, tag, count, title: s.title || s.tag || 'Group' };
   });
 }
 
@@ -125,25 +121,22 @@ function renderSections() {
     const sec = document.createElement('section');
     sec.className = 'section';
 
-    // Header: ONLY show the right-side chip "<GROUP> (count)"
+    // Header with ONLY right-side "<GROUP> (count)"
     const head = document.createElement('div');
     head.className = 'section-head';
-
-    const leftSpacer = document.createElement('div'); // keeps layout stable; intentionally empty
-    leftSpacer.className = 'section-title';
-    leftSpacer.setAttribute('aria-hidden', 'true');
+    const spacer = document.createElement('div');
+    spacer.className = 'section-title';
+    spacer.setAttribute('aria-hidden', 'true');
 
     const countChip = document.createElement('span');
     countChip.className = 'chip chip--count';
-    const groupName = section.title || section.tag || 'Group';
-    countChip.textContent = `${groupName} (${visibleItems.length})`;
+    countChip.textContent = `${section.title} (${visibleItems.length})`;
 
-    head.appendChild(leftSpacer);
+    head.appendChild(spacer);
     head.appendChild(countChip);
 
     const body = document.createElement('div');
     body.className = 'section-body';
-
     const grid = document.createElement('div');
     grid.className = 'doc-grid';
 
@@ -151,13 +144,19 @@ function renderSections() {
       const card = document.createElement('div');
       card.className = 'doc-card';
 
-      // Single button that IS the document (contains the doc name)
       const a = document.createElement('a');
       a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
-      a.href = item.url || '#';
+      a.href = resolveHref(item.url);
       a.target = '_blank';
       a.rel = 'noopener';
       a.textContent = item.label || item.name || 'Document';
+
+      // Optional: quick console breadcrumb to debug path issues
+      a.addEventListener('click', (e) => {
+        if (!a.href) {
+          console.warn('No href for item', item);
+        }
+      });
 
       card.appendChild(a);
       grid.appendChild(card);
@@ -168,6 +167,21 @@ function renderSections() {
     sec.appendChild(body);
     mount.appendChild(sec);
   });
+}
+
+// Resolve item URLs robustly (handles "docs/file.pdf", "./docs/file.pdf", "/docs/file.pdf", or absolute)
+function resolveHref(u) {
+  if (!u) return '#';
+  try {
+    // If absolute, return as-is
+    if (/^https?:\/\//i.test(u)) return u;
+    // If starts with '/', resolve from origin
+    if (u.startsWith('/')) return new URL(u, location.origin).href;
+    // Otherwise resolve relative to current page (works for "docs/...","./docs/...")
+    return new URL(u, location.href).href;
+  } catch {
+    return u;
+  }
 }
 
 function wireButtons() {
@@ -190,11 +204,10 @@ async function prefetchAll() {
       const res = await fetch(url, { cache: 'no-cache' });
       if (res.ok) await cache.put(new Request(url), res.clone());
     } catch {
-      // swallow; progress continues
+      // continue
     } finally {
       done++;
-      const pct = Math.round((done / urls.length) * 100);
-      updateProgress(pct);
+      updateProgress(Math.round((done / urls.length) * 100));
     }
   }
 
@@ -207,8 +220,7 @@ async function prefetchAll() {
 
 function collectAllUrls() {
   const urls = new Set();
-  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(it.url); }));
-  // also cache the manifest & app shell
+  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(resolveHref(it.url)); }));
   urls.add(window.MANIFEST_URL);
   urls.add('index.html'); urls.add('app.js'); urls.add('sw.js');
   return Array.from(urls);
