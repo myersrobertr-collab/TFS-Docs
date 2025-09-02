@@ -44,11 +44,11 @@ async function init() {
 
     STATE.lastDownloadedAt = +(localStorage.getItem(STORAGE_KEY) || 0);
 
-    renderMeta();          // header text (now considers version mismatch)
+    renderMeta();           // header text (includes version mismatch check)
     renderTagChips();
     renderSections();
     wireButtons();
-    reflectCacheFreshness(); // button state (also considers version mismatch)
+    reflectCacheFreshness(); // button label (includes version mismatch check)
   } catch (err) {
     console.error(err);
     els.meta().textContent = 'Failed to load docs manifest.';
@@ -95,11 +95,23 @@ function collectTags(sections) {
   });
 }
 
+/* ------- Update status logic ------- */
 function getUpdateFlags() {
-  var lastVersion = normalizeVersion(localStorage.getItem(STORAGE_VERSION_KEY));
-  var versionMismatch = !!(lastVersion && lastVersion !== STATE.manifestVersion);
-  var timeStale = isStale(STATE.lastDownloadedAt);
-  return { versionMismatch: versionMismatch, timeStale: timeStale, stale: (versionMismatch || timeStale) };
+  var lastVersionRaw = localStorage.getItem(STORAGE_VERSION_KEY);
+  var lastVersion = normalizeVersion(lastVersionRaw);
+  var lastTs = +(localStorage.getItem(STORAGE_KEY) || 0);
+  var hasPreviousDownload = lastTs > 0;
+
+  // Treat null/empty lastVersion as mismatch if there was a previous download
+  var versionMismatch = hasPreviousDownload ? (lastVersion !== STATE.manifestVersion) : false;
+  var timeStale = isStale(lastTs);
+
+  return {
+    versionMismatch: versionMismatch,
+    timeStale: timeStale,
+    stale: (versionMismatch || timeStale),
+    lastVersion: lastVersion
+  };
 }
 
 function renderMeta() {
@@ -110,6 +122,7 @@ function renderMeta() {
     (flags.stale ? ' · <span class="badge badge--warn">Update recommended</span>' : '');
 }
 
+/* ------- UI render ------- */
 function renderTagChips() {
   var row = els.tagChips();
   row.innerHTML = '';
@@ -193,6 +206,7 @@ function renderSections() {
   });
 }
 
+/* ------- Actions ------- */
 function wireButtons() {
   els.btnDownload().addEventListener('click', prefetchAll);
   els.btnRemove().addEventListener('click', clearAllCachesHard);
@@ -297,9 +311,7 @@ function reflectCacheFreshness() {
   if (flags.stale) {
     btn.classList.add('badge', 'badge--warn');
     btn.textContent = 'Download Docs (Update recommended)';
-    // Optional: show details on hover
-    var lastVersion = normalizeVersion(localStorage.getItem(STORAGE_VERSION_KEY)) || '—';
-    btn.title = 'Cached version: ' + lastVersion + ' • Current manifest: ' + (STATE.manifestVersion || '—');
+    btn.title = 'Cached: ' + (flags.lastVersion || '—') + ' • Current: ' + (STATE.manifestVersion || '—');
   } else {
     btn.classList.remove('badge', 'badge--warn');
     btn.textContent = 'Download Docs';
