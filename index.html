@@ -1,189 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#121826">
-  <link rel="manifest" href="app.webmanifest">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>TFS Documents</title>
+  <meta name="description" content="Offline-capable quick launcher for TFS documents and checklists." />
+  <meta name="theme-color" content="#121826" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  /* ===========================
-   VISUAL REFRESH OVERRIDES
-   (paste below your existing styles)
-   =========================== */
+  <link rel="manifest" href="app.webmanifest" />
 
-:root{
-  --brand: #37b3e7;         /* crisper brand blue */
-  --panel: #121826;
-  --text: #eaf0ff;
-  --muted:#a9b1c3;
+  <style>
+    :root{
+      --bg:#0f1420;
+      --panel:#121826;
+      --text:#eaf0ff;
+      --muted:#a9b1c3;
 
-  /* Blue/gray chip base */
-  --chip-bg: #11233a;
-  --chip-border: #334a70;
-  --chip-glow: 0 0 0 6px rgba(55,179,231,.12), 0 0 18px rgba(55,179,231,.16);
-  --chip-glow-faint: 0 0 0 4px rgba(55,179,231,.08);
+      /* Blues */
+      --brand:#37b3e7;
+      --chip-bg:#11233a;
+      --chip-border:#334a70;
+      --chip-glow:0 0 0 6px rgba(55,179,231,.12),0 0 18px rgba(55,179,231,.16);
+      --chip-glow-faint:0 0 0 4px rgba(55,179,231,.08);
 
-  /* EMER palette (metallic red) */
-  --emer-top: #ff5f6b;
-  --emer-core: #b1141e;
-  --emer-bottom: #2a0a0d;
-  --emer-edge: #ffd6d8;
-  --emer-border: #ff8086;
-}
+      /* EMER metallic palette */
+      --emer-top:#ff5f6b;
+      --emer-core:#b1141e;
+      --emer-bottom:#2a0a0d;
+      --emer-edge:#ffd6d8;
+      --emer-border:#ff8086;
 
-/* Make all “buttons” ~35% narrower & center text */
-button.btn,
-a.link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
+      --radius:14px;
+    }
 
-button.btn {            /* was 10px 14px */
-  padding: 10px 9px;    /* ~35% less horizontal padding */
-}
+    html,body{
+      height:100%;
+      margin:0;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, #192133 0%, #0f1420 60%) fixed,
+        linear-gradient(#0f1420,#0f1420);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-a.link {                /* was 10px 12px */
-  padding: 10px 8px;    /* ~35% less horizontal padding */
-}
+    .app{max-width:1100px;margin:36px auto 72px;padding:0 16px;}
 
-/* Chips narrower too (optional, keeps proportions tidy) */
-.chip {                 /* was 8px 12px */
-  padding: 8px 8px;
-}
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;
+    }
+    .title{font-size:22px;letter-spacing:.2px;font-weight:650}
+    .subtle{color:var(--muted);font-size:13px}
 
-/* Higher-contrast blue/gray buttons (non-EMER) */
-a.link {
-  background:
-    linear-gradient(180deg, #2c3f61 0%, #243551 55%, #1a2740 100%);
-  border: 1px solid #384f79;
-  color: var(--text);
-  font-weight: 750;
-}
-a.link:hover {
-  transform: translateY(-1px);
-  border-color: #4a689d;
-  box-shadow: 0 10px 22px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
-}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
-/* Base chip: deeper blue, subtle gloss */
-.chip{
-  background:
-    linear-gradient(180deg, #1f3556 0%, #182b47 58%, #15243c 100%);
-  border: 1px solid var(--chip-border);
-  color: #eaf0ff;
-  font-weight: 700;
-  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset,
-              0 10px 22px rgba(0,0,0,.28);
-}
-.chip:hover{ border-color:#4a689d; }
-.chip--active{
-  border-color:#55c5f0;
-  box-shadow: var(--chip-glow), 0 1px 0 rgba(255,255,255,.08) inset;
-}
+    /* ----- Buttons & links: 35% narrower + centered ----- */
+    button.btn, a.link{
+      display:inline-flex;align-items:center;justify-content:center;text-align:center;
+      border-radius:12px;border:1px solid #263247;cursor:pointer;
+      transition:transform .06s ease, border-color .2s ease, box-shadow .2s ease;
+      font-weight:700;font-size:14px;
+    }
+    button.btn{background:var(--panel);color:var(--text);padding:10px 9px;}   /* was ~10px 14px */
+    a.link{padding:10px 8px;text-decoration:none;}                            /* was ~10px 12px */
 
-/* ================
-   EMER metallic shine
-   Apply to EMER chips AND EMER doc buttons.
-   - If your app already uses .danger for EMER doc links, this overrides it.
-   - You can also add .link--emer to any EMER link.
-   ================ */
+    button.btn:hover{transform:translateY(-1px);border-color:#2f3d57}
+    button.btn:active{transform:translateY(0)}
+    button.btn.danger, button.danger{background:#3a1215;border-color:#6a1e23;color:#ffecee} /* keep destructive flat */
 
-.chip--emer,
-a.link.danger,
-a.link.link--emer{
-  position: relative;
-  overflow: hidden;
-  color: #ffecee;
-  border: 1px solid var(--emer-border);
-  background:
-    /* metallic body */
-    linear-gradient(180deg, var(--emer-top) 0%, #e0373f 18%, var(--emer-core) 55%, #6e0f16 80%, var(--emer-bottom) 100%),
-    /* subtle diagonal sheen */
-    linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%),
-    /* bottom burnish */
-    radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.35), transparent 60%);
-  box-shadow:
-    0 0 0 6px rgba(234, 49, 60, .14),
-    0 0 18px rgba(234, 49, 60, .20),
-    inset 0 1px 0 rgba(255,255,255,.15),
-    inset 0 -2px 4px rgba(0,0,0,.25);
-  transition: box-shadow .2s ease, transform .06s ease, border-color .2s ease;
-}
+    /* ----- Chips (filters) ----- */
+    .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 22px}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 8px;      /* narrower */
+      border-radius:999px;border:1px solid var(--chip-border);
+      background:linear-gradient(180deg,#1f3556 0%,#182b47 58%,#15243c 100%);
+      color:#eaf0ff;font-size:13px;font-weight:700;letter-spacing:.2px;user-select:none;cursor:pointer;
+      transition:box-shadow .2s ease,border-color .2s ease,transform .06s ease,background .2s ease;
+      box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 10px 22px rgba(0,0,0,.28);
+    }
+    .chip:hover{border-color:#4a689d;transform:translateY(-1px)}
+    .chip:active{transform:translateY(0)}
+    .chip--active{border-color:#55c5f0;box-shadow:var(--chip-glow),0 1px 0 rgba(255,255,255,.08) inset}
 
-/* Gloss highlight line (metal edge) */
-.chip--emer::after,
-a.link.danger::after,
-a.link.link--emer::after{
-  content:"";
-  position:absolute; left:0; right:0; top:0;
-  height:1px;
-  background: linear-gradient(90deg, transparent, var(--emer-edge), transparent);
-  opacity:.85;
-  pointer-events:none;
-}
+    /* ----- EMER metallic shine (chips AND EMER doc links) ----- */
+    .chip--emer,
+    a.link.danger,               /* if your renderer uses .danger for EMER docs */
+    a.link.link--emer{           /* or explicitly add .link--emer */
+      position:relative;overflow:hidden;color:#ffecee;border:1px solid var(--emer-border);
+      background:
+        linear-gradient(180deg,var(--emer-top) 0%,#e0373f 18%,var(--emer-core) 55%,#6e0f16 80%,var(--emer-bottom) 100%),
+        linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,0) 45%),
+        radial-gradient(120% 80% at 50% 120%,rgba(0,0,0,.35),transparent 60%);
+      box-shadow:
+        0 0 0 6px rgba(234,49,60,.14),0 0 18px rgba(234,49,60,.20),
+        inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.25);
+      transition: box-shadow .2s ease, transform .06s ease, border-color .2s ease;
+    }
+    .chip--emer::after,
+    a.link.danger::after,
+    a.link.link--emer::after{
+      content:"";position:absolute;left:0;right:0;top:0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--emer-edge),transparent);opacity:.85;pointer-events:none;
+    }
+    .chip--emer::before,
+    a.link.danger::before,
+    a.link.link--emer::before{
+      content:"";position:absolute;left:-10%;right:-10%;top:-10%;height:60%;
+      background:radial-gradient(120% 80% at 50% -10%,rgba(255,255,255,.32),rgba(255,255,255,0) 70%);
+      pointer-events:none;mix-blend-mode:screen;
+    }
+    .chip--emer:hover,
+    a.link.danger:hover,
+    a.link.link--emer:hover{
+      transform:translateY(-1px);border-color:#ffc2c5;
+      box-shadow:0 0 0 8px rgba(255,82,92,.14),0 0 28px rgba(255,82,92,.22),
+                 inset 0 1px 0 rgba(255,255,255,.2),inset 0 -3px 6px rgba(0,0,0,.3);
+    }
 
-/* Soft top gloss panel */
-.chip--emer::before,
-a.link.danger::before,
-a.link.link--emer::before{
-  content:"";
-  position:absolute; left:-10%; right:-10%; top:-10%;
-  height:60%;
-  background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.32), rgba(255,255,255,0) 70%);
-  pointer-events:none;
-  mix-blend-mode: screen;
-}
+    /* ----- Non-EMER links (doc buttons): higher-contrast blue/gray ----- */
+    a.link{
+      background:linear-gradient(180deg,#2c3f61 0%,#243551 55%,#1a2740 100%);
+      border:1px solid #384f79;color:var(--text);
+      box-shadow:0 8px 22px rgba(0,0,0,.25);
+    }
+    a.link:hover{transform:translateY(-1px);border-color:#4a689d;box-shadow:0 10px 22px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06)}
 
-.chip--emer:hover,
-a.link.danger:hover,
-a.link.link--emer:hover{
-  transform: translateY(-1px);
-  border-color:#ffc2c5;
-  box-shadow:
-    0 0 0 8px rgba(255, 82, 92, .14),
-    0 0 28px rgba(255, 82, 92, .22),
-    inset 0 1px 0 rgba(255,255,255,.2),
-    inset 0 -3px 6px rgba(0,0,0,.3);
-}
+    /* ----- Sections & cards ----- */
+    .section{
+      border:1px solid #223149;border-radius:var(--radius);
+      background:rgba(18,24,38,.6);box-shadow:0 8px 26px rgba(0,0,0,.28);
+      margin-bottom:16px;overflow:hidden;
+    }
+    .section-head{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 16px;border-bottom:1px solid #1f2a42;
+      background:linear-gradient(180deg,rgba(20,28,44,.6),rgba(14,20,33,.4));
+    }
+    .section-body{padding:8px 10px 10px}
 
-/* Keep the toolbar’s Remove button red but flatter (not metallic) */
-button.btn.danger,
-button.danger{
-  background: #3a1215;
-  border-color: #6a1e23;
-  color: #ffecee;
-}
+    .doc-grid{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:8px}
+    @media(min-width:720px){.doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(min-width:980px){.doc-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-/* Focus visibility (keyboard) */
-button.btn:focus-visible,
-a.link:focus-visible,
-.chip:focus-visible{
-  outline: 2px solid #9fe0ff;
-  outline-offset: 3px;
-  box-shadow: 0 0 0 4px rgba(159,224,255,.25);
-}
+    .doc-card{
+      border:1px solid #223149;background:#121826;border-radius:12px;
+      padding:10px 12px;display:grid;gap:6px;
+      transition:transform .06s ease,border-color .2s ease,box-shadow .2s ease;
+    }
+    .doc-card:hover{transform:translateY(-1px);border-color:#2a3a58;box-shadow:0 8px 22px rgba(0,0,0,.25)}
 
+    /* ----- Progress ----- */
+    .progress-wrap{display:none;align-items:center;gap:10px;margin:8px 0 2px}
+    .progress{height:8px;width:240px;border-radius:999px;background:#0e1728;border:1px solid #25324b;overflow:hidden}
+    .progress>i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#46b5e1,#2eaadc);transition:width .15s ease}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid #263247;background:#121826;color:var(--muted)}
+
+    /* ----- Focus visibility (keyboard) ----- */
+    button.btn:focus-visible, a.link:focus-visible, .chip:focus-visible{
+      outline:2px solid #9fe0ff;outline-offset:3px;box-shadow:0 0 0 4px rgba(159,224,255,.25);
+    }
+  </style>
 </head>
+
 <body>
-  <div class="app">
+  <main class="app" aria-label="TFS Documents Application">
     <header>
       <div>
         <div class="title">TFS Documents</div>
-        <div class="subtle" id="meta"></div>
+        <div class="subtle" id="meta" aria-live="polite"></div>
       </div>
       <div class="toolbar">
-        <button class="btn" id="btnDownload">Download Docs</button>
-        <button class="btn danger" id="btnRemove">Remove Docs</button>
+        <button class="btn" id="btnDownload" type="button" aria-label="Download or update all documents for offline use">Download Docs</button>
+        <button class="btn danger" id="btnRemove" type="button" aria-label="Remove cached documents and reset">Remove Docs</button>
       </div>
     </header>
 
-    <!-- Progress bar -->
+    <!-- Progress -->
     <div class="progress-wrap" id="progressWrap" aria-hidden="true">
-      <div class="progress"><i id="progressBar" style="width:0%"></i></div>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Download progress">
+        <i id="progressBar" style="width:0%"></i>
+      </div>
       <span class="badge" id="progressLabel">0%</span>
     </div>
 
@@ -192,19 +192,29 @@ a.link:focus-visible,
 
     <!-- Sections mount -->
     <div id="sections"></div>
-  </div>
+  </main>
 
+  <noscript>
+    <div class="app" style="color:#ffd9a8;background:#2a1d0f;border:1px solid #5a3d1a;border-radius:12px;padding:12px;margin:16px">
+      JavaScript is required to render and cache the document list.
+    </div>
+  </noscript>
+
+  <!-- App globals consumed by app.js -->
   <script>
-    /* Configure paths/versions here */
     window.APP_VERSION  = window.APP_VERSION  || "2025.A";
-    window.MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json"; /* docs manifest lives under /docs */
+    window.MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json";
     window.CACHE_NAME   = window.CACHE_NAME   || ("tfs-docs-" + window.APP_VERSION);
   </script>
+
+  <!-- App logic -->
   <script src="app.js" defer></script>
+
+  <!-- Service Worker -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').catch(function () {});
+    if ("serviceWorker" in navigator) {
+      addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
       });
     }
   </script>
