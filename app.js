@@ -4,11 +4,13 @@
    - Right-side "<GROUP> (count)" in section header
    - Single-button doc rows that open in a new tab
    - Visible progress bar during "Download Docs"
-   - "Update recommended" shows if cache is older than 14 days OR manifest version changed
+   - "Update recommended" shows if cache is older than 14 days OR server manifest version changed
+   - Background polling of docs/manifest.json (offline-safe) + 12h auto-refresh fallback
 */
 
 var STATE = {
-  manifestVersion: null,
+  manifestVersion: null,          // version from the manifest loaded into the UI
+  remoteManifestVersion: null,    // latest version observed from polling
   sections: [],
   tags: [],
   activeTag: 'ALL',
@@ -29,7 +31,16 @@ var els = {
 var EMER_KEY = 'EMER';
 var STORAGE_KEY = 'tfs-docs:lastDownloadedAt';
 var STORAGE_VERSION_KEY = 'tfs-docs:lastVersion';
+var STORAGE_LAST_LOAD = 'tfs-docs:lastPageLoad';
 var STALE_DAYS = 14;
+
+/* ===== Auto-refresh config ===== */
+var AUTO_REFRESH_MS = 12 * 60 * 60 * 1000; // 12 hours
+var HEARTBEAT_MS = 5 * 60 * 1000;          // check every 5 minutes
+
+/* ===== Manifest polling config ===== */
+var POLL_INTERVAL_MS = 20 * 60 * 1000;     // poll every 20 minutes
+var POLL_TIMEOUT_MS  = 8000;               // 8s timeout for fetch
 
 async function init() {
   try {
@@ -39,16 +50,21 @@ async function init() {
 
     // Expected: { version, sections: [{ title, tags?:[], items: [{ label, href|url, tags?[] }] }] }
     STATE.manifestVersion = normalizeVersion(data.version);
+    STATE.remoteManifestVersion = STATE.manifestVersion; // baseline
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags = Array.from(new Set(['ALL'].concat(collectTags(STATE.sections))));
 
     STATE.lastDownloadedAt = +(localStorage.getItem(STORAGE_KEY) || 0);
 
-    renderMeta();           // header text (includes version mismatch check)
+    renderMeta();            // header text (includes staleness check)
     renderTagChips();
     renderSections();
     wireButtons();
-    reflectCacheFreshness(); // button label (includes version mismatch check)
+    reflectCacheFreshness(); // button label (includes staleness check)
+
+    // Mark this page-load and schedule refresh + start polling
+    markPageLoadAndSchedule();
+    scheduleManifestPolling();
   } catch (err) {
     console.error(err);
     els.meta().textContent = 'Failed to load docs manifest.';
@@ -102,15 +118,17 @@ function getUpdateFlags() {
   var lastTs = +(localStorage.getItem(STORAGE_KEY) || 0);
   var hasPreviousDownload = lastTs > 0;
 
-  // Treat null/empty lastVersion as mismatch if there was a previous download
-  var versionMismatch = hasPreviousDownload ? (lastVersion !== STATE.manifestVersion) : false;
+  // Compare "cached last downloaded" vs "server/remote" version if we have it; else vs current UI version.
+  var serverVersion = normalizeVersion(STATE.remoteManifestVersion || STATE.manifestVersion || '');
+  var versionMismatch = hasPreviousDownload ? (lastVersion !== serverVersion) : false;
   var timeStale = isStale(lastTs);
 
   return {
     versionMismatch: versionMismatch,
     timeStale: timeStale,
     stale: (versionMismatch || timeStale),
-    lastVersion: lastVersion
+    lastVersion: lastVersion,
+    serverVersion: serverVersion
   };
 }
 
@@ -230,7 +248,7 @@ async function prefetchAll() {
         await cache.put(new Request(url), res.clone());
       }
     } catch (e) {
-      // continue; still show progress
+      // ignore; keep progressing
     } finally {
       done++;
       updateProgress(Math.round((done / urls.length) * 100));
@@ -239,8 +257,34 @@ async function prefetchAll() {
 
   STATE.lastDownloadedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, String(STATE.lastDownloadedAt));
-  localStorage.setItem(STORAGE_VERSION_KEY, STATE.manifestVersion); // track the version that was downloaded
-  renderMeta();
+  localStorage.setItem(STORAGE_VERSION_KEY, normalizeVersion(STATE.remoteManifestVersion || STATE.manifestVersion));
+
+  // After download, re-fetch manifest to refresh version/sections shown in UI (optional but nice)
+  try {
+    var res2 = await fetch(window.MANIFEST_URL, { cache: 'no-cache' });
+    if (res2.ok) {
+      var data2 = await res2.json();
+      var newVer = normalizeVersion(data2.version);
+      STATE.manifestVersion = newVer;
+      STATE.remoteManifestVersion = newVer;
+
+      var newSections = normalizeSections(data2.sections || []);
+      // Keep current activeTag if it still exists; otherwise fall back to ALL
+      var newTags = Array.from(new Set(['ALL'].concat(collectTags(newSections))));
+      var keepTag = newTags.indexOf(STATE.activeTag) !== -1 ? STATE.activeTag : 'ALL';
+
+      STATE.sections = newSections;
+      STATE.tags = newTags;
+      STATE.activeTag = keepTag;
+
+      renderMeta();
+      renderTagChips();
+      renderSections();
+    }
+  } catch (e) {
+    // stay quiet if offline/in-flight or network hiccup
+  }
+
   reflectCacheFreshness();
   showProgress(false);
 }
@@ -301,6 +345,7 @@ function clearAllCachesHard() {
   ]).then(function () {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_VERSION_KEY);
+    localStorage.removeItem(STORAGE_LAST_LOAD);
     location.reload();
   });
 }
@@ -311,7 +356,7 @@ function reflectCacheFreshness() {
   if (flags.stale) {
     btn.classList.add('badge', 'badge--warn');
     btn.textContent = 'Download Docs (Update recommended)';
-    btn.title = 'Cached: ' + (flags.lastVersion || '—') + ' • Current: ' + (STATE.manifestVersion || '—');
+    btn.title = 'Cached: ' + (flags.lastVersion || '—') + ' • Server: ' + (flags.serverVersion || '—');
   } else {
     btn.classList.remove('badge', 'badge--warn');
     btn.textContent = 'Download Docs';
@@ -334,6 +379,108 @@ function sanitize(s) {
   return String(s).replace(/[<>&]/g, function (c) {
     return c === '<' ? '&lt;' : (c === '>' ? '&gt;' : '&amp;');
   });
+}
+
+/* ===== Auto-refresh implementation ===== */
+
+function markPageLoadAndSchedule() {
+  localStorage.setItem(STORAGE_LAST_LOAD, String(Date.now()));
+  scheduleAutoRefresh();
+}
+
+function scheduleAutoRefresh() {
+  var last = +(localStorage.getItem(STORAGE_LAST_LOAD) || 0);
+  if (!last) {
+    last = Date.now();
+    localStorage.setItem(STORAGE_LAST_LOAD, String(last));
+  }
+
+  var now = Date.now();
+  var dueAt = last + AUTO_REFRESH_MS;
+  var delay = Math.max(0, dueAt - now);
+
+  setTimeout(checkAndReloadIfDue, delay + 2000);
+  setInterval(checkAndReloadIfDue, HEARTBEAT_MS);
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) checkAndReloadIfDue();
+  });
+  window.addEventListener('online', checkAndReloadIfDue);
+}
+
+function checkAndReloadIfDue() {
+  var last = +(localStorage.getItem(STORAGE_LAST_LOAD) || 0);
+  var now = Date.now();
+
+  if (now - last >= AUTO_REFRESH_MS) {
+    if (document.hidden) return;
+    if (!navigator.onLine) return;
+
+    var downloading = els.progressWrap().style.display !== 'none';
+    if (downloading) return;
+
+    localStorage.setItem(STORAGE_LAST_LOAD, String(now));
+    location.reload();
+  }
+}
+
+/* ===== Manifest polling (offline-safe) ===== */
+function scheduleManifestPolling() {
+  // quick check when tab becomes visible again or network returns
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) pollManifestOnce();
+  });
+  window.addEventListener('online', pollManifestOnce);
+
+  // regular cadence
+  setInterval(pollManifestOnce, POLL_INTERVAL_MS);
+  // initial delayed ping (don’t hammer on page load)
+  setTimeout(pollManifestOnce, 2 * 60 * 1000);
+}
+
+async function pollManifestOnce() {
+  // Skip if hidden, offline, or a download is in progress
+  if (document.hidden) return;
+  if (!navigator.onLine) return;
+  if (els.progressWrap().style.display !== 'none') return;
+
+  var controller;
+  var timer;
+
+  try {
+    controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    if (controller) {
+      timer = setTimeout(function () { try { controller.abort(); } catch (e) {} }, POLL_TIMEOUT_MS);
+    }
+
+    var res = await fetch(window.MANIFEST_URL, {
+      cache: 'no-cache',
+      signal: controller ? controller.signal : undefined
+    });
+    if (!res.ok) return; // quietly ignore
+
+    var data = await res.json();
+    var remoteVer = normalizeVersion(data && data.version);
+    if (!remoteVer) return;
+
+    // Update our notion of "server version"
+    var prevRemote = STATE.remoteManifestVersion;
+    STATE.remoteManifestVersion = remoteVer;
+
+    // If server version differs from cached last download, surface the warning immediately
+    reflectCacheFreshness();
+
+    // (Optional) If you want the header "Docs X" to reflect server version as soon as detected,
+    // uncomment the next 3 lines. Currently we keep header as the UI's loaded version.
+    // STATE.manifestVersion = remoteVer;
+    // renderMeta();
+    // (We do not hot-swap sections here to avoid surprising changes mid-session.)
+
+  } catch (e) {
+    // swallow network/poll errors (e.g., in flight)
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 init();
