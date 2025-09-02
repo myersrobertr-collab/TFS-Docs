@@ -11,7 +11,7 @@
 
   <!-- One place to bump the app shell version -->
   <script>
-    window.APP_VERSION  = "2025.9.30";
+    window.APP_VERSION  = "2025.9.40";
     window.MANIFEST_URL = "docs/manifest.json";
     window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
   </script>
@@ -83,6 +83,14 @@
     #progressTrack{ position:relative;flex:1;height:10px;background:#0f172a;border:1px solid #253246;border-radius:999px;overflow:hidden }
     #progressBar{ position:absolute;top:0;left:0;height:100%;width:0%;background:linear-gradient(90deg, #60a5fa, #3b82f6) }
     #progressText{ font-size:12px;color:#cbd5e1;min-width:38px;text-align:right }
+    /* Yellow warning variant (used by the Hard refresh button) */
+    .btn-warn{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn);
+      border-color: var(--warn);
+      color:#111;
+}
+.btn-warn:hover{ filter:brightness(1.05); }
+
   </style>
 </head>
 <body>
@@ -95,8 +103,10 @@
       <div style="text-align:right">
         <button id="offlineBtn" class="btn btn-offline">Download for offline</button>
         <div id="lastCache">Last downloaded: —</div>
+        <button id="forceRefreshBtn" class="btn btn-warn" title="Clear caches & reload">
+          Hard refresh
+        </button>
       </div>
-
       <div id="progressWrap">
         <div id="progressTrack"><div id="progressBar"></div></div>
         <div id="progressText">0%</div>

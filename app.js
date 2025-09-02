@@ -1,51 +1,132 @@
-/* TFS Docs — no in-app viewer (direct open) */
-(() => {
-  // ---- config pulled from index.html ----
-  const APP_VERSION  = window.APP_VERSION  || 'dev';
-  const MANIFEST_URL = window.MANIFEST_URL || 'docs/manifest.json';
-  const CACHE_NAME   = window.CACHE_NAME   || ('tfs-docs-' + APP_VERSION);
+// ---------- Config ----------
+const APP_VERSION  = window.APP_VERSION || 'dev';
+const MANIFEST_URL = window.MANIFEST_URL || 'docs/manifest.json';
+const CACHE_NAME   = window.CACHE_NAME   || ('tfs-docs-' + APP_VERSION);
+const STALE_MS     = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-  // ---- state ----
-  let TAGS = [];
-  let DOCS = [];
-  let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
+// ---------- DOM ----------
+const elSections   = document.getElementById('sections');
+const elChips      = document.getElementById('chips');
+const elOfflineBtn = document.getElementById('offlineBtn');
+const elManVer     = document.getElementById('manifestVer');
+const elLastCache  = document.getElementById('lastCache');
 
-  // ---- elements ----
-  const sectionsEl     = document.getElementById('sections');
-  const chipsEl        = document.getElementById('chips') || document.getElementById('tagbar') || null;
-  const offlineBtn     = document.getElementById('offlineBtn');
-  const manifestVerEl  = document.getElementById('manifestVer');
-  const progressWrap   = document.getElementById('progressWrap');
-  const progressTrack  = document.getElementById('progressTrack');
-  const progressBar    = document.getElementById('progressBar');
-  const progressText   = document.getElementById('progressText');
+const progWrap  = document.getElementById('progressWrap');
+const progTrack = document.getElementById('progressTrack');
+const progBar   = document.getElementById('progressBar');
+const progText  = document.getElementById('progressText');
 
-  // ---- utils ----
-  const isStandalone = () =>
-    window.navigator.standalone === true ||
-    window.matchMedia?.('(display-mode: standalone)').matches;
+// ---------- State ----------
+let DOCS = [];
+let TAGS = [];
+let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
+let manifestVersion = null;
 
-  const fmtDate = d => new Date(d).toLocaleString([], {year:'numeric', month:'short', day:'2-digit'});
+// ---------- Utilities ----------
+const fmtDate = ts => {
+  if (!ts) return '—';
+  const d = new Date(Number(ts));
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
 
-  // ---- load manifest ----
-  async function loadDocs() {
-    let m;
-    try {
-      const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache: 'no-cache' });
-      if (!r.ok) throw new Error('manifest missing');
-      m = await r.json();
-    } catch (e) {
-      console.warn('Manifest load failed; using fallback', e);
-      m = { tagMeta: [], sections: [{ title:'MISC', items:[] }] };
-    }
+function updateLastCacheLabel() {
+  const last = localStorage.getItem('tfs.lastPrefetchAt');
+  elLastCache.textContent = `Last downloaded: ${fmtDate(last)}`;
+}
 
-    // version label (from manifest)
-    if (manifestVerEl) manifestVerEl.textContent = m.version ? `v${m.version}` : '';
+function needsYellow() {
+  const last = Number(localStorage.getItem('tfs.lastPrefetchAt') || 0);
+  const tooOld = Date.now() - last > STALE_MS;
+  const prevVer = localStorage.getItem('tfs.manifestVersion');
+  const newer = !!(manifestVersion && prevVer && prevVer !== manifestVersion);
+  return tooOld || newer;
+}
+
+function setOfflineBtnState() {
+  if (!elOfflineBtn) return;
+  if (needsYellow()) {
+    elOfflineBtn.classList.add('btn-warn');
+    elOfflineBtn.title = 'New/updated docs available or cache is older than 14 days';
+  } else {
+    elOfflineBtn.classList.remove('btn-warn');
+    elOfflineBtn.title = '';
+  }
+}
+
+function setProgress(pct) {
+  progWrap.style.display = 'block';
+  progBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  progText.textContent = `${Math.round(pct)}%`;
+  if (pct >= 100) {
+    setTimeout(() => { progWrap.style.display = 'none'; }, 600);
+  }
+}
+
+// ---------- Render ----------
+function renderTagBar() {
+  if (!elChips) return;
+  const tags = ['All', ...TAGS];
+  elChips.innerHTML = tags.map(tag => {
+    const emer = tag.toLowerCase() === 'emer' ? ' style="background:#e4002b;border-color:#e4002b;color:#fff"' : '';
+    const active = tag === selectedTag ? ' data-active="1"' : '';
+    return `<button class="tagbtn"${emer}${active ? ' aria-current="true"' : ''} data-tag="${tag}">${tag}</button>`;
+  }).join('');
+
+  elChips.querySelectorAll('.tagbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedTag = btn.dataset.tag;
+      localStorage.setItem('tfs.selectedTag', selectedTag);
+      renderSections(DOCS);
+      // update active state
+      elChips.querySelectorAll('.tagbtn').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'true');
+    });
+  });
+}
+
+function renderSections(sections) {
+  const pass = s => selectedTag === 'All' ||
+    (Array.isArray(s.tags) && s.tags.includes(selectedTag));
+
+  const chunks = sections.filter(pass).map(sec => {
+    const count = (sec.items || []).length;
+    const htmlItems = (sec.items || []).map(it => {
+      const emerClass = (it.tags || []).some(t => t.toLowerCase() === 'emer') ? ' emer' : '';
+      return `
+        <div class="card">
+          <a class="btn${emerClass}" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="section">
+        <h2>${sec.title} <span class="count">(${count})</span></h2>
+        <div class="grid">
+          ${htmlItems}
+        </div>
+      </div>
+    `;
+  });
+
+  elSections.innerHTML = chunks.join('') || `<div class="muted">No documents for this filter.</div>`;
+}
+
+// ---------- Manifest loading ----------
+async function loadDocs() {
+  try {
+    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}&t=${Date.now()}`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('manifest missing');
+    const m = await r.json();
 
     TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
     DOCS = Array.isArray(m.sections) ? m.sections : [];
+    manifestVersion = m.version || null;
 
-    // selected tag still valid?
+    // UI bits
+    if (elManVer) elManVer.textContent = manifestVersion ? `v${manifestVersion}` : 'v—';
+
+    // If current selectedTag no longer exists, fall back to All
     if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
       selectedTag = 'All';
       localStorage.setItem('tfs.selectedTag', selectedTag);
@@ -53,168 +134,107 @@
 
     renderTagBar();
     renderSections(DOCS);
-    updateOfflineButtonState(m.version);
+
+    // Compare manifest version to highlight yellow state if needed
+    setOfflineBtnState();
+  } catch (e) {
+    console.warn('Manifest load failed:', e);
+    TAGS = [];
+    DOCS = [{ title: 'MISC', items: [] }];
+    renderTagBar();
+    renderSections(DOCS);
   }
+}
 
-  // ---- tag bar ----
-  function renderTagBar() {
-    if (!chipsEl) return;
+// ---------- Offline prefetch ----------
+async function prefetchAll() {
+  // Collect URLs (shell + docs)
+  const urls = new Set([
+    './',
+    'index.html',
+    'app.webmanifest',
+    'sw.js'
+  ]);
+  DOCS.forEach(sec => (sec.items || []).forEach(it => urls.add(it.href)));
 
-    const tags = ['All', ...TAGS];
-    chipsEl.innerHTML = '';
-    tags.forEach(tag => {
-      const count = countItemsForTag(tag);
-      const btn = document.createElement('button');
-      btn.className = 'tagbtn' + (tag === 'EMER' ? ' emer' : '') + (tag === selectedTag ? ' active' : '');
-      btn.textContent = count > 0 ? `${tag} (${count})` : tag;
-      btn.onclick = () => {
-        selectedTag = tag;
-        localStorage.setItem('tfs.selectedTag', tag);
-        renderTagBar();
-        renderSections(DOCS);
-      };
-      chipsEl.appendChild(btn);
-    });
-  }
+  const list = Array.from(urls);
+  let done = 0;
 
-  function countItemsForTag(tag) {
-    if (tag === 'All') {
-      return DOCS.reduce((acc, s) => acc + (s.items?.length || 0), 0);
-    }
-    let n = 0;
-    DOCS.forEach(sec => {
-      for (const it of (sec.items || [])) {
-        const tags = it.tags || sec.tags || [];
-        if (tags.includes(tag)) n++;
-      }
-    });
-    return n;
-  }
-
-  // ---- render sections/cards ----
-  function renderSections(sections) {
-    sectionsEl.innerHTML = '';
-    sections.forEach(sec => {
-      const items = (sec.items || []).filter(it => {
-        if (selectedTag === 'All') return true;
-        const t = it.tags || sec.tags || [];
-        return t.includes(selectedTag);
-      });
-      if (!items.length) return;
-
-      const wrap = document.createElement('div');
-      wrap.className = 'section';
-
-      // title with count chip
-      const h = document.createElement('h2');
-      const cnt = items.length;
-      h.innerHTML = `${sec.title || ''} <span class="chip"><span class="dot"></span>${cnt}</span>`;
-      if ((sec.tags || []).includes('EMER')) h.classList.add('emer');
-      wrap.appendChild(h);
-
-      // grid
-      const grid = document.createElement('div');
-      grid.className = 'grid';
-
-      items.forEach(it => {
-        const card = document.createElement('div');
-        card.className = 'card';
-
-        // Direct link to the PDF (no in-app viewer)
-        const a = document.createElement('a');
-        a.className = 'btn' + ((it.tags || sec.tags || []).includes('EMER') ? ' emer' : '');
-        a.href = it.href;
-        a.textContent = it.label;
-
-        // In standalone (A2HS), opening new tabs is limited — navigate in-place.
-        a.onclick = (e) => {
-          if (isStandalone()) {
-            e.preventDefault();
-            location.href = it.href; // simple, dependable
-          } else {
-            a.target = '_blank';
-            a.rel = 'noopener';
-          }
-        };
-
-        card.appendChild(a);
-        grid.appendChild(card);
-      });
-
-      wrap.appendChild(grid);
-      sectionsEl.appendChild(wrap);
-    });
-  }
-
-  // ---- offline prefetch & button state ----
-  function getAllDocUrls() {
-    const urls = [];
-    DOCS.forEach(sec => (sec.items || []).forEach(it => urls.push(it.href)));
-    return Array.from(new Set(urls));
-  }
-
-  function setProgress(pct, label) {
-    if (!progressBar || !progressText) return;
-    progressWrap?.style.setProperty('display', 'block');
-    progressBar.style.width = `${pct}%`;
-    progressText.textContent = label || `${Math.round(pct)}%`;
-    if (pct >= 100) setTimeout(() => (progressWrap.style.display = 'none'), 600);
-  }
-
-  async function downloadForOffline() {
-    const urls = new Set([
-      './', 'index.html', 'app.webmanifest', 'sw.js'
-    ]);
-    getAllDocUrls().forEach(u => urls.add(u));
-
-    const list = Array.from(urls);
+  try {
     const cache = await caches.open(CACHE_NAME);
 
-    let done = 0;
-    setProgress(1, 'Starting…');
-
+    // Fetch sequentially to show progress reliably
     for (const url of list) {
       try {
-        const res = await fetch(url, { cache: 'no-cache' });
-        if (res.ok) await cache.put(url, res.clone());
-      } catch (e) {
-        console.warn('Cache miss:', url, e);
+        const res = await fetch(url, { cache: 'reload' });
+        if (res.ok) await cache.put(new Request(url), res.clone());
+      } catch {
+        // ignore single-file failures; keep going
       } finally {
-        done++;
+        done += 1;
         setProgress((done / list.length) * 100);
       }
     }
 
-    localStorage.setItem('tfs.lastCache', new Date().toISOString());
-    // tie what we cached to current manifest version, so we can detect updates
-    const manifestVersion = (manifestVerEl?.textContent || '').replace(/^v/, '');
-    if (manifestVersion) localStorage.setItem('tfs.cachedManifestVersion', manifestVersion);
-
-    updateOfflineButtonState(manifestVersion);
+    // Mark timestamps + version and update UI
+    localStorage.setItem('tfs.lastPrefetchAt', String(Date.now()));
+    if (manifestVersion) localStorage.setItem('tfs.manifestVersion', manifestVersion);
+    updateLastCacheLabel();
+    setOfflineBtnState();
+    alert('Offline files updated 👍');
+  } catch (e) {
+    console.error(e);
+    alert('Could not cache all files. Try again with good connectivity.');
+  } finally {
+    setTimeout(() => { progWrap.style.display = 'none'; }, 800);
   }
+}
 
-  function updateOfflineButtonState(currentManifestVersion) {
-    if (!offlineBtn) return;
+// ---------- Hard refresh ----------
+async function hardRefresh() {
+  try {
+    // 1) Delete app + workbox/runtime caches
+    if ('caches' in window) {
+      const names = await caches.keys();
+      const toDelete = names.filter(n => /^tfs-docs-/i.test(n) || /workbox|runtime|pdf/i.test(n));
+      await Promise.all(toDelete.map(n => caches.delete(n)));
+    }
 
-    const last = localStorage.getItem('tfs.lastCache');
-    const cachedVer = localStorage.getItem('tfs.cachedManifestVersion') || '';
-    const now = Date.now();
-    const needsRefresh =
-      !last ||
-      (now - new Date(last).getTime()) > 14 * 24 * 3600 * 1000 || // >14 days
-      (!!currentManifestVersion && cachedVer && cachedVer !== currentManifestVersion);
+    // 2) Unregister all SWs
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
 
-    // “yellow” look via a class the CSS already styles
-    offlineBtn.classList.toggle('warn', needsRefresh);
+    // 3) Clear app markers
+    ['tfs.lastPrefetchAt','tfs.manifestVersion','tfs.selectedTag','tfs.cachedUrlsV2']
+      .forEach(k => { try { localStorage.removeItem(k); } catch {} });
 
-    // small note under / title tooltip
-    const nice = last ? `Last download: ${fmtDate(last)}` : 'Not cached yet';
-    offlineBtn.title = nice;
+    // 4) Reload with cache-bust
+    const url = new URL(window.location.href);
+    url.searchParams.set('fresh', Date.now().toString());
+    window.location.replace(url.toString());
+  } catch (e) {
+    console.error(e);
+    alert('Could not clear caches. Close all tabs and try again.');
   }
+}
 
-  // wire button
-  offlineBtn?.addEventListener('click', downloadForOffline);
+// ---------- Events ----------
+elOfflineBtn?.addEventListener('click', () => {
+  const msg = 'This will (re)download all files for offline use. Continue?';
+  if (confirm(msg)) prefetchAll();
+});
 
-  // kick off
-  loadDocs();
-})();
+document.getElementById('forceRefreshBtn')?.addEventListener('click', async () => {
+  const ok = confirm(
+    'This will delete all downloaded files and reload the app.\nYou can re-download offline files afterwards.\n\nProceed?'
+  );
+  if (!ok) return;
+  await hardRefresh();
+});
+
+// ---------- Init ----------
+updateLastCacheLabel();
+loadDocs();
+setOfflineBtnState(); // initial state based on whatever is stored
