@@ -9,151 +9,94 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#121826" />
 
-  <!-- One place to bump the app shell version (cache-busting for HTML/JS/CSS) -->
+  <!-- One place to bump the app shell version -->
   <script>
-    window.APP_VERSION  = "2025.9.25";
+    window.APP_VERSION  = "2025.9.26";
     window.MANIFEST_URL = "docs/manifest.json";
     window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
   </script>
 
   <style>
     :root{
-      /* slightly brighter bg, keep good contrast */
-      --bg:#0f1724;
-      --card:#111827;
+      --bg:#10192a;     /* a bit brighter than before */
+      --card:#131c2c;
       --muted:#9ca3af;
       --text:#e5e7eb;
       --accent:#2563eb;
-      --accent2:#e4002b; /* EMER */
+      --emer:#e4002b;
       --btn:#1f2937;
       --btnText:#f9fafb;
       --ring:#334155;
+      --warn:#f59e0b;   /* yellow for stale/update */
     }
-
     *{box-sizing:border-box}
     html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-
     .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     h1{font-size:22px;margin:8px 0}
-    .bar{margin:12px 0 20px;border-top:1px solid #1f2937}
-
-    /* grid + sections */
-    .section{margin:18px 0}
-    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:560px){.grid{grid-template-columns:1fr}}
-
-    .card{
-      background:var(--card);
-      border:1px solid #1f2937;
-      border-radius:14px;
-      padding:14px;
-    }
-
-    /* doc buttons (20% less wide, centered) */
-    .btn{
-      display:block;
-      width:80%;
-      max-width:420px;                /* guard on huge screens */
-      margin:0 auto;
-      text-align:center;
-      color:var(--btnText);
-      text-decoration:none;
-      font-weight:700;
-      border-radius:12px;
-      border:1px solid #273244;
-      padding:12px 14px;
-
-      /* nicer shading */
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.10)),
-        var(--btn);
-      box-shadow: 0 6px 14px rgba(0,0,0,.18);
-      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
-    }
-    /* keep full width on very small screens so taps are easy */
-    @media (max-width:420px){ .btn{width:100%;} }
-
-    .btn:hover{
-      filter:brightness(1.06);
-      transform: translateY(-1px);
-      box-shadow: 0 10px 18px rgba(0,0,0,.22);
-    }
-
-    /* EMER buttons stay red + get same gradient */
-    .btn.emer{
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)),
-        var(--accent2);
-      border-color: var(--accent2);
-      color:#fff;
-    }
-
-    /* squarer offline button in header (auto width, not 80%) */
-    .btn.btn-offline{
-      width:auto;
-      min-width:180px;
-      margin:0;
-      padding:.7rem 1rem;
-      border-radius:10px;
-    }
+    .ver{color:#94a3b8;font-size:12px}
+    .bar{margin:12px 0 20px;border-top:1px solid #1f2a40}
 
     /* tag bar */
-    #chips, .tagbar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+    #chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
     .tagbtn{
       background:#0f172a;color:#e2e8f0;border:1px solid #253246;
       border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;
-      cursor:pointer;
-      transition: filter .12s ease, transform .12s ease;
+      cursor:pointer;transition: filter .12s ease, transform .12s ease;
     }
     .tagbtn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
     .tagbtn.active{ background:#1d2a3f; border-color:#334b6b; }
-    .tagbtn.emer{ background:var(--accent2); border-color:var(--accent2); color:#fff; }
+    .tagbtn.emer{ background:var(--emer); border-color:var(--emer); color:#fff; }
 
-    .ver{color:#94a3b8;font-size:12px}
+    /* section/grid */
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#d0d6df}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid #1f2a40;border-radius:14px;padding:14px}
 
-    /* progress bar */
-    #progressWrap{
-      display:none;                  /* shown while caching */
-      width:100%;
-      margin-top:8px;
-      gap:8px;
-      align-items:center;
+    /* document buttons (20% narrower + friendlier shading) */
+    .btn{
+      display:block;width:80%;max-width:420px;margin:0 auto;text-align:center;
+      color:var(--btnText);text-decoration:none;font-weight:700;border-radius:12px;
+      border:1px solid #273244;padding:12px 14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.10)), var(--btn);
+      box-shadow: 0 6px 14px rgba(0,0,0,.18);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
     }
-    #progressTrack{
-      position:relative;
-      flex:1;
-      height:10px;
-      background:#0f172a;
-      border:1px solid #253246;
-      border-radius:999px;
-      overflow:hidden;
+    @media (max-width:420px){ .btn{width:100%;} }
+    .btn:hover{ filter:brightness(1.06); transform: translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.22); }
+    .btn.emer{
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--emer);
+      border-color:var(--emer); color:#fff;
     }
-    #progressBar{
-      position:absolute;
-      top:0;left:0;height:100%;width:0%;
-      background:linear-gradient(90deg, #60a5fa, #3b82f6);
-    }
-    #progressText{
-      font-size:12px;color:#cbd5e1;min-width:38px;text-align:right;
-    }
+
+    /* header offline button + last cached */
+    .btn-offline{ width:auto;min-width:180px;margin:0;border-radius:10px;padding:.7rem 1rem; }
+    .btn-offline.warn{ background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)), var(--warn); border-color:var(--warn); color:#111; }
+    #lastCache{ font-size:12px;color:#cbd5e1;margin-top:6px;text-align:right }
+
+    /* progress line */
+    #progressWrap{ display:none;width:100%;margin-top:8px;gap:8px;align-items:center }
+    #progressTrack{ position:relative;flex:1;height:10px;background:#0f172a;border:1px solid #253246;border-radius:999px;overflow:hidden }
+    #progressBar{ position:absolute;top:0;left:0;height:100%;width:0%;background:linear-gradient(90deg, #60a5fa, #3b82f6) }
+    #progressText{ font-size:12px;color:#cbd5e1;min-width:38px;text-align:right }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="title">
+      <div>
         <h1>📁 TFS Documents</h1>
         <span id="manifestVer" class="ver">v—</span>
       </div>
-      <div class="right">
+      <div style="text-align:right">
         <button id="offlineBtn" class="btn btn-offline">Download for offline</button>
+        <div id="lastCache">Last downloaded: —</div>
       </div>
 
-      <!-- progress line under the buttons -->
       <div id="progressWrap">
         <div id="progressTrack"><div id="progressBar"></div></div>
         <div id="progressText">0%</div>
@@ -163,7 +106,6 @@
     <div id="chips"></div>
     <div class="bar"></div>
 
-    <!-- sections render here -->
     <div id="sections"></div>
   </div>
 
