@@ -1,12 +1,44 @@
 {
   "sections": [
     {
-      "title": "MISC",
+      "title": "G600",
       "items": [
-        { "label": "N183T SAFA", "href": "docs/183SAFA.pdf" },
-        { "label": "N484EM SAFA",      "href": "docs/484SAFA.pdf" },
-        { "label": "N585PL SAFA",    "href": "docs/585SAFA.pdf" },
-        { "label": "N686BE SAFA",      "href": "docs/686SAFA.pdf" }
+        { "label": "G600 Checklist", "href": "docs/g600-checklist.pdf", "desc": "Normal/Abnormal/Emergency", "cats": ["G600","Manuals"] },
+        { "label": "G600 Performance", "href": "docs/g600-performance.pdf", "cats": ["G600"] }
+      ]
+    },
+    {
+      "title": "G280",
+      "items": [
+        { "label": "G280 Checklist", "href": "docs/g280-checklist.pdf", "cats": ["G280","Manuals"] }
+      ]
+    },
+    {
+      "title": "Admin",
+      "items": [
+        { "label": "Expense Policy", "href": "docs/expense-policy.pdf", "cats": ["Admin"] },
+        { "label": "Duty/Rest Guide", "href": "docs/duty-rest.pdf", "cats": ["Admin","International"] }
+      ]
+    },
+    {
+      "title": "Manuals",
+      "items": [
+        { "label": "Ops Manual Vol 1", "href": "docs/ops-manual-v1.pdf", "cats": ["Manuals"] }
+      ]
+    },
+    {
+      "title": "International",
+      "items": [
+        { "label": "EU SAFA Guide", "href": "docs/eu-safa.pdf", "cats": ["International"] }
+      ]
+    },
+    {
+      "title": "Misc",
+      "items": [
+        { "label": "N183T SAFA", "href": "docs/183SAFA.pdf", "cats": ["Misc","International"] },
+        { "label": "N484EM SAFA", "href": "docs/484SAFA.pdf", "cats": ["Misc","International"] },
+        { "label": "N585PL SAFA", "href": "docs/585SAFA.pdf", "cats": ["Misc","International"] },
+        { "label": "N686BE SAFA", "href": "docs/686SAFA.pdf", "cats": ["Misc","International"] }
       ]
     }
   ]
