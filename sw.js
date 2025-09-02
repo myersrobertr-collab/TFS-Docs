@@ -1,97 +1,123 @@
-// sw.js — TFS Docs service worker
-// Bump this string when you update the worker to ensure it updates on clients:
-const SW_VERSION = "2025.09.15-1";
+/* TFS Documents – Service Worker
+   Changes in this version:
+   - Ensures PDF clicks open the actual PDF (and not the app shell)
+   - Cache-first for assets; network for navigations, with a simple offline fallback
+   - Basic Range request passthrough for PDF viewers
+*/
 
-self.addEventListener("install", (event) => {
-  // Activate immediately so this page is controlled without an extra refresh
+const SW_VERSION = 'tfs-sw-v7';
+const ASSET_CACHE = `assets-${SW_VERSION}`;
+
+// Match simple static assets for cache-first
+const ASSET_EXTS = ['.js', '.css', '.html', '.webmanifest', '.png', '.jpg', '.jpeg', '.svg', '.ico'];
+
+// Utility helpers
+const isPDF = (url) => url.pathname.toLowerCase().endsWith('.pdf');
+const isAsset = (url) => ASSET_EXTS.some(ext => url.pathname.toLowerCase().endsWith(ext));
+
+self.addEventListener('install', (event) => {
+  // no pre-cache required; app prefetch flow handles large files
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
-  // Take control of all open pages under scope
-  event.waitUntil(self.clients.claim());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // Clean old caches if you rev SW_VERSION often
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => (k.startsWith('assets-') && k !== ASSET_CACHE) ? caches.delete(k) : Promise.resolve()));
+  })());
+  self.clients.claim();
 });
 
-// Utility: respond to Range requests (needed for Chrome's PDF viewer offline)
-async function handleRangeRequest(event, cachedResponse) {
-  try {
-    const rangeHeader = event.request.headers.get("range");
-    if (!rangeHeader) return null;
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
 
-    // Parse "bytes=start-end"
-    const m = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
-    if (!m) return null;
+  // Only handle GET
+  if (req.method !== 'GET') return;
 
-    const resp = cachedResponse || (await caches.match(event.request));
-    if (!resp) return null;
+  const url = new URL(req.url);
+  const wantsRange = req.headers.has('range');
+  const pdf = isPDF(url);
 
-    const buf = await resp.arrayBuffer();
-    const total = buf.byteLength;
-
-    let start = m[1] ? parseInt(m[1], 10) : 0;
-    let end   = m[2] ? parseInt(m[2], 10) : total - 1;
-    start = Math.min(start, total - 1);
-    end   = Math.min(end, total - 1);
-
-    const chunk = buf.slice(start, end + 1);
-    return new Response(chunk, {
-      status: 206,
-      statusText: "Partial Content",
-      headers: {
-        "Content-Type": resp.headers.get("Content-Type") || "application/octet-stream",
-        "Content-Range": `bytes ${start}-${end}/${total}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": String(chunk.byteLength),
-      },
-    });
-  } catch (e) {
-    // If anything goes wrong, allow normal flow
-    return null;
-  }
-}
-
-self.addEventListener("fetch", (event) => {
-  // Only handle GETs
-  if (event.request.method !== "GET") return;
-
-  event.respondWith((async () => {
-    // 1) For navigations (index.html): try network first, then cache
-    if (event.request.mode === "navigate") {
+  // (A) PDF handling — let the PDF actually load, not the app shell.
+  // Use cache-first for offline support; support basic Range passthrough.
+  if (pdf) {
+    event.respondWith((async () => {
       try {
-        const net = await fetch(event.request);
+        const cache = await caches.open(ASSET_CACHE);
+
+        // Range requests: pass through to network (viewer will request more chunks)
+        if (wantsRange) {
+          const netRes = await fetch(req);
+          if (!netRes || !netRes.ok) {
+            const cached = await cache.match(req);
+            return cached || netRes;
+          }
+          // Optionally cache full-body responses if server sends 200 + Accept-Ranges
+          return netRes;
+        }
+
+        // Non-range: cache-first
+        const cached = await cache.match(req);
+        if (cached) return cached;
+
+        const netRes = await fetch(req, { cache: 'no-cache' });
+        if (netRes && netRes.ok) {
+          cache.put(req, netRes.clone());
+        }
+        return netRes;
+      } catch (e) {
+        // Last-resort: try any cached index as an offline indicator (not ideal for PDFs)
+        const fallback = await caches.match('index.html');
+        return fallback || new Response('Offline and PDF not cached.', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  // (B) HTML navigations (the app itself)
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        // Network first so updates deploy immediately
+        const net = await fetch(req);
         return net;
       } catch {
-        const cached = await caches.match(event.request) ||
-                       await caches.match(new URL("./", self.registration.scope).toString()) ||
-                       await caches.match("index.html");
-        if (cached) return cached;
-        return new Response("Offline", { status: 503, statusText: "Offline" });
+        // Offline fallback to any cached index
+        const cached = await caches.match('index.html');
+        return cached || new Response('Offline.', { status: 503 });
       }
-    }
+    })());
+    return;
+  }
 
-    // 2) For everything else: Range-aware cache-first, then network
-    // First try Cache
-    const cached = await caches.match(event.request);
-    if (cached) {
-      // Serve Range if requested (e.g., PDFs)
-      const ranged = await handleRangeRequest(event, cached);
-      return ranged || cached;
-    }
+  // (C) Static assets: cache-first
+  if (isAsset(url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(ASSET_CACHE);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      const net = await fetch(req);
+      if (net && net.ok) cache.put(req, net.clone());
+      return net;
+    })());
+    return;
+  }
 
-    // Not cached: go to network, then drop into cache for future offline
+  // (D) Everything else (e.g., JSON manifest, API): network with gentle fallback; cache updated responses
+  event.respondWith((async () => {
     try {
-      const net = await fetch(event.request);
-      // Store a clone in a best-effort cache
-      try {
-        const cache = await caches.open("tfs-runtime"); // generic runtime cache name
-        cache.put(event.request, net.clone());
-      } catch { /* ignore cache put errors */ }
-
-      // If Range requested and we just fetched full response, still try to honor range
-      const ranged = await handleRangeRequest(event, net.clone());
-      return ranged || net;
+      const net = await fetch(req, { cache: 'no-cache' });
+      // Optionally cache small text/json for resiliency
+      if (net && net.ok && (net.headers.get('content-type') || '').includes('application/json')) {
+        const cache = await caches.open(ASSET_CACHE);
+        cache.put(req, net.clone());
+      }
+      return net;
     } catch {
-      return new Response("Offline", { status: 503, statusText: "Offline" });
+      const cache = await caches.open(ASSET_CACHE);
+      const cached = await cache.match(req);
+      return cached || new Response('Offline.', { status: 503 });
     }
   })());
 });

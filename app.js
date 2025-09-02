@@ -1,8 +1,9 @@
 /* TFS Documents – app shell logic
-   - Renders tag filter chips
-   - Renders sections/cards
-   - Handles prefetch w/ progress
-   - Adds “glow” selection on tag chips and outlined/glowing count chips
+   Changes in this version:
+   - Section header now shows ONLY a right-side chip: "<GROUP> (count)"
+     (left title area is suppressed)
+   - Doc cards now render a single button that contains the document name
+     (e.g., "G280 Cold WX Ops") — no separate title/meta lines
 */
 
 const STATE = {
@@ -35,7 +36,7 @@ async function init() {
     const data = await res.json();
 
     // Expected structure:
-    // { version: "2025.9.51", sections: [{ title, tag, count?, items: [{ label, url, tags?:[] }] }], tags?: ["G600","G280","EMER",...] }
+    // { version, sections: [{ title, tag, items: [{ label, url, tags?:[] }] }], ... }
     STATE.manifestVersion = data.version || '—';
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags     = Array.from(new Set(['ALL', ...collectTags(STATE.sections)]));
@@ -54,7 +55,6 @@ async function init() {
 }
 
 function normalizeSections(sections) {
-  // Ensure each item has tags array and section count
   return sections.map(s => {
     const items = (s.items || []).map(it => ({
       ...it,
@@ -72,7 +72,6 @@ function collectTags(sections) {
     if (s.tag) set.add(s.tag);
     (s.items || []).forEach(it => (it.tags || []).forEach(t => set.add(t)));
   });
-  // Keep EMER near front if present
   return [...set].sort((a, b) => {
     if (a === EMER_KEY) return -1;
     if (b === EMER_KEY) return 1;
@@ -81,10 +80,10 @@ function collectTags(sections) {
 }
 
 function renderMeta() {
-  const dt = STATE.lastDownloadedAt ? new Date(STATE.lastDownloadedAt) : null;
   const stale = isStale(STATE.lastDownloadedAt);
-  const staleBadge = stale ? ' • cache is getting old' : '';
-  els.meta().innerHTML = `App ${sanitize(window.APP_VERSION)} · Docs ${sanitize(STATE.manifestVersion)}${stale ? ' · <span class="badge badge--warn">Update recommended</span>' : ''}${staleBadge}`;
+  els.meta().innerHTML = `App ${sanitize(window.APP_VERSION)} · Docs ${sanitize(STATE.manifestVersion)}${
+    stale ? ' · <span class="badge badge--warn">Update recommended</span>' : ''
+  }`;
 }
 
 function renderTagChips() {
@@ -98,10 +97,9 @@ function renderTagChips() {
     chip.dataset.tag = tag;
     chip.ariaPressed = (STATE.activeTag === tag ? 'true' : 'false');
     chip.textContent = tag;
-    if (STATE.activeTag === tag) chip.classList.add('chip--active'); // glow when selected
+    if (STATE.activeTag === tag) chip.classList.add('chip--active');
     chip.addEventListener('click', () => {
       STATE.activeTag = tag;
-      // Update all chips selected state (glow)
       document.querySelectorAll('.chip[role="tab"]').forEach(el => {
         const isActive = el.dataset.tag === STATE.activeTag;
         el.classList.toggle('chip--active', isActive);
@@ -117,31 +115,30 @@ function renderSections() {
   const mount = els.sections();
   mount.innerHTML = '';
 
-  // filter sections/items by activeTag
   const tag = STATE.activeTag;
   const isAll = tag === 'ALL';
 
   STATE.sections.forEach(section => {
-    // Count visible items under current filter
     const visibleItems = section.items.filter(it => isAll || (it.tags || []).includes(tag));
     if (!visibleItems.length) return;
 
     const sec = document.createElement('section');
     sec.className = 'section';
 
+    // Header: ONLY show the right-side chip "<GROUP> (count)"
     const head = document.createElement('div');
     head.className = 'section-head';
 
-    const titleWrap = document.createElement('div');
-    titleWrap.className = 'section-title';
-    titleWrap.textContent = section.title || section.tag || 'Section';
+    const leftSpacer = document.createElement('div'); // keeps layout stable; intentionally empty
+    leftSpacer.className = 'section-title';
+    leftSpacer.setAttribute('aria-hidden', 'true');
 
-    // Make a count chip that is outlined + faint glow
     const countChip = document.createElement('span');
     countChip.className = 'chip chip--count';
-    countChip.textContent = `${section.tag || section.title || 'Group'} (${visibleItems.length})`;
+    const groupName = section.title || section.tag || 'Group';
+    countChip.textContent = `${groupName} (${visibleItems.length})`;
 
-    head.appendChild(titleWrap);
+    head.appendChild(leftSpacer);
     head.appendChild(countChip);
 
     const body = document.createElement('div');
@@ -154,23 +151,14 @@ function renderSections() {
       const card = document.createElement('div');
       card.className = 'doc-card';
 
-      const title = document.createElement('div');
-      title.className = 'doc-title';
-      title.textContent = item.label || item.name || 'Document';
-
-      const meta = document.createElement('div');
-      meta.className = 'doc-meta';
-      meta.textContent = (item.tags && item.tags.length) ? item.tags.join(' · ') : (section.tag ? section.tag : '');
-
+      // Single button that IS the document (contains the doc name)
       const a = document.createElement('a');
       a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
       a.href = item.url || '#';
       a.target = '_blank';
       a.rel = 'noopener';
-      a.textContent = 'Open';
+      a.textContent = item.label || item.name || 'Document';
 
-      card.appendChild(title);
-      card.appendChild(meta);
       card.appendChild(a);
       grid.appendChild(card);
     });
@@ -189,11 +177,6 @@ function wireButtons() {
 
 async function prefetchAll() {
   if (!('serviceWorker' in navigator)) return;
-  const reg = await navigator.serviceWorker.getRegistration();
-  if (!reg || !navigator.serviceWorker.controller) {
-    // Ensure SW is active before prefetch
-    await navigator.serviceWorker.register('sw.js');
-  }
 
   const urls = collectAllUrls();
   if (!urls.length) return;
@@ -206,8 +189,8 @@ async function prefetchAll() {
     try {
       const res = await fetch(url, { cache: 'no-cache' });
       if (res.ok) await cache.put(new Request(url), res.clone());
-    } catch (e) {
-      console.warn('Prefetch failed for', url);
+    } catch {
+      // swallow; progress continues
     } finally {
       done++;
       const pct = Math.round((done / urls.length) * 100);
@@ -242,7 +225,6 @@ function updateProgress(pct) {
 }
 
 function clearAllCachesHard() {
-  // Unregister SWs + clear caches
   Promise.all([
     navigator.serviceWorker?.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
     caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
@@ -253,7 +235,7 @@ function clearAllCachesHard() {
 }
 
 function reflectCacheFreshness() {
-  const stale = isStale(STATE.lastDownloadedAt) || versionMismatch();
+  const stale = isStale(STATE.lastDownloadedAt);
   const btn = els.btnDownload();
   if (stale) {
     btn.classList.add('badge', 'badge--warn');
@@ -269,13 +251,7 @@ function isStale(ts) {
   const ageDays = (Date.now() - ts) / (1000*60*60*24);
   return ageDays > STALE_DAYS;
 }
-function versionMismatch() {
-  // If manifest version changed after last download, we consider it stale
-  // (This is a heuristic; in practice, re-download when user clicks)
-  return false; // left simple; server-side can nudge SW_VERSION or manifest version
-}
 
-// tiny sanitizer for UI text
 function sanitize(s) {
   return String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 }
