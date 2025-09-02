@@ -1,5 +1,5 @@
 {
-  "version": "2025.9.11",
+  "version": "2025.9.12",
   "tagMeta": ["G600", "G280", "Manuals", "Admin", "Misc", "International"],
   "sections": [
     {
@@ -28,6 +28,7 @@
       "items": [
         { "label": "FOM",            "href": "docs/FOM.pdf",            "tags": ["Manuals", "Admin"] },
         { "label": "IOM SkyBriefs",  "href": "docs/IOM SkyBriefs.pdf",  "tags": ["Manuals"] },
+        { "label": "IOM",  "href": "docs/IOM.pdf",                      "tags": ["Manuals"] },
         { "label": "CAM",            "href": "docs/CAM.pdf",            "tags": ["Manuals"] }
       ]
     },
