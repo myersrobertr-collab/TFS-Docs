@@ -1,10 +1,9 @@
-/* TFS Documents – app shell (v11)
-   UI specifics per your request:
-   - Section header: only a right-side "<GROUP> (count)" chip (no left title)
-   - Each document renders as a single button with the doc name (e.g., "G280 Cold WX Ops")
-   Robustness fixes:
-   - Safer link resolution (handles relative/absolute and encodes spaces)
-   - Prefetch stores original URLs so SW can find them across *any* cache
+/* TFS Documents – app shell (stable baseline)
+   - Buttons open documents in a new tab (as before)
+   - Tag chips glow when active; EMER styling preserved
+   - Section header shows ONLY the right-side "<GROUP> (count)" chip
+   - Visible progress bar during "Download Docs"
+   - "Update recommended" appears when cache is stale
 */
 
 const STATE = {
@@ -36,6 +35,7 @@ async function init() {
     if (!res.ok) throw new Error(`Failed to load manifest: ${res.status}`);
     const data = await res.json();
 
+    // Expected: { version, sections: [{ title, tag, items: [{ label, url, tags?[] }] }] }
     STATE.manifestVersion = data.version || '—';
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags     = Array.from(new Set(['ALL', ...collectTags(STATE.sections)]));
@@ -65,9 +65,9 @@ function normalizeSections(sections) {
   });
 }
 
-function collectTags(sections) {
+function collectTags(seions) {
   const set = new Set();
-  sections.forEach(s => {
+  seions.forEach(s => {
     if (s.tag) set.add(s.tag);
     (s.items || []).forEach(it => (it.tags || []).forEach(t => set.add(t)));
   });
@@ -143,13 +143,14 @@ function renderSections() {
     const grid = document.createElement('div');
     grid.className = 'doc-grid';
 
+    // Each card is just a single “button” link with the doc name (opens new tab)
     visibleItems.forEach(item => {
       const card = document.createElement('div');
       card.className = 'doc-card';
 
       const a = document.createElement('a');
       a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
-      a.href   = resolveHref(item.url);
+      a.href   = item.url || '#'; // use manifest URL directly (works like original)
       a.target = '_blank';
       a.rel    = 'noopener';
       a.textContent = item.label || item.name || 'Document';
@@ -159,26 +160,10 @@ function renderSections() {
     });
 
     body.appendChild(grid);
+    sec.appendChild(head);
     sec.appendChild(body);
-    sec.appendChild(head); // keep DOM order logical: header visually on top via CSS flow
-    sec.insertBefore(head, body); // ensure header above body
-
     mount.appendChild(sec);
   });
-}
-
-// Resolve and lightly encode relative URLs to avoid path/space issues
-function resolveHref(u) {
-  if (!u) return '#';
-  try {
-    if (/^https?:\/\//i.test(u)) return u;                 // absolute
-    if (u.startsWith('/')) return new URL(u, location.origin).href; // root-relative
-    // For relative, encode spaces minimally
-    const safe = u.replace(/ /g, '%20');
-    return new URL(safe, location.href).href;
-  } catch {
-    return u;
-  }
 }
 
 function wireButtons() {
@@ -195,16 +180,15 @@ async function prefetchAll() {
   showProgress(true);
   let done = 0;
 
-  // Use the page-defined cache name for app shell & manifest; PDFs can land in any cache
   const cache = await caches.open(window.CACHE_NAME);
   for (const url of urls) {
     try {
       const res = await fetch(url, { cache: 'no-cache' });
-      if (res && (res.ok || res.type === 'opaque')) {
+      if (res.ok || res.type === 'opaque') {
         await cache.put(new Request(url), res.clone());
       }
     } catch {
-      // continue; we still update progress
+      // continue; still show progress
     } finally {
       done++;
       updateProgress(Math.round((done / urls.length) * 100));
@@ -220,7 +204,9 @@ async function prefetchAll() {
 
 function collectAllUrls() {
   const urls = new Set();
-  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(resolveHref(it.url)); }));
+  // Prefetch all document URLs exactly as provided (matches original behavior)
+  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(it.url); }));
+  // Also cache the manifest & app shell
   urls.add(window.MANIFEST_URL);
   urls.add('index.html'); urls.add('app.js'); urls.add('sw.js');
   return Array.from(urls);
@@ -251,7 +237,7 @@ function reflectCacheFreshness() {
   const btn = els.btnDownload();
   if (stale) {
     btn.classList.add('badge', 'badge--warn');
-    btn.textContent = 'Download Docs (Update Available)';
+    btn.textContent = 'Download Docs (Update recommended)';
   } else {
     btn.classList.remove('badge', 'badge--warn');
     btn.textContent = 'Download Docs';
@@ -263,7 +249,6 @@ function isStale(ts) {
   const ageDays = (Date.now() - ts) / (1000*60*60*24);
   return ageDays > STALE_DAYS;
 }
-
 function sanitize(s) {
   return String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 }

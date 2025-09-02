@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#121826" />
   <link rel="manifest" href="app.webmanifest" />
-
   <title>TFS Documents</title>
 
   <style>
@@ -15,12 +14,13 @@
       --text: #e7ebf3;
       --muted: #a9b1c3;
       --brand: #2eaadc;
-      --brand-weak: rgba(46,170,220,.35);
       --danger: #e5484d;
+
       --chip-bg: #1a2333;
       --chip-border: #2a3650;
       --chip-glow: 0 0 0 6px rgba(46,170,220,.12), 0 0 18px rgba(46,170,220,.15);
       --chip-glow-faint: 0 0 0 4px rgba(46,170,220,.08);
+
       --radius: 14px;
     }
 
@@ -109,14 +109,14 @@
     .chip:hover { border-color: #3a4a6b; transform: translateY(-1px); }
     .chip:active { transform: translateY(0); }
 
-    /* Selected tag chip gets a soft “behind” glow */
+    /* Selected tag chip = soft glow */
     .chip--active {
       border-color: #45b8e6;
       box-shadow: var(--chip-glow);
       background: linear-gradient(180deg, #1c2a40, #172237 60%, #152032);
     }
 
-    /* EMER priority styling stays bold/red but can also be active */
+    /* EMER styling */
     .chip--emer {
       border-color: rgba(229,72,77,.65);
       background: linear-gradient(180deg, #2a1416, #201013 60%, #1a0e12);
@@ -127,7 +127,7 @@
       border-color: #ff6a70;
     }
 
-    /* Count chips (G600 (9)) get an outline and faint ambient glow */
+    /* Count chip (e.g., G600 (9)) = outlined + faint glow */
     .chip--count {
       background: transparent;
       border-style: dashed;
@@ -154,27 +154,16 @@
       border-bottom: 1px solid #1f2a42;
       background: linear-gradient(180deg, rgba(20,28,44,.6), rgba(14,20,33,.4));
     }
-    .section-title {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      font-weight: 700;
-      font-size: 15px;
-      letter-spacing: .2px;
-    }
-
+    .section-title { /* intentionally empty to keep layout; we only show the right-side chip */ }
     .section-body { padding: 8px 10px 10px; }
+
     .doc-grid {
       display: grid;
       grid-template-columns: repeat(1, minmax(0, 1fr));
       gap: 8px;
     }
-    @media (min-width: 720px) {
-      .doc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (min-width: 980px) {
-      .doc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    }
+    @media (min-width: 720px) { .doc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 980px) { .doc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
     .doc-card {
       border: 1px solid #223149;
@@ -187,37 +176,32 @@
     }
     .doc-card:hover { transform: translateY(-1px); border-color: #2a3a58; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
 
-    .doc-title { font-size: 14px; font-weight: 700; }
-    .doc-meta  { font-size: 12px; color: var(--muted); }
-
+    /* The doc "button" */
     .link {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 10px;
+      padding: 10px 12px;
       background: #162035;
       border: 1px solid #263247;
       border-radius: 10px;
       text-decoration: none;
       color: var(--text);
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 14px;
       transition: border-color .2s ease, transform .06s ease;
     }
     .link:hover { border-color: #35507a; transform: translateY(-1px); }
-
     .danger { background: #2a1213; border-color: #482224; color: #ffd6d7; }
 
-    /* progress bar */
+    /* Progress bar */
     .progress-wrap { display: none; align-items: center; gap: 10px; margin: 8px 0 2px; }
     .progress {
-      height: 8px; width: 220px; border-radius: 999px;
+      height: 8px; width: 240px; border-radius: 999px;
       background: #0e1728; border: 1px solid #25324b; overflow: hidden;
     }
-    .progress > i {
-      display: block; height: 100%; width: 0%;
-      background: linear-gradient(90deg, #46b5e1, #2eaadc);
-      transition: width .15s ease;
-    }
+    .progress > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #46b5e1, #2eaadc); transition: width .15s ease; }
+
     .badge {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
@@ -239,6 +223,7 @@
       </div>
     </header>
 
+    <!-- Progress bar (back and visible while downloading) -->
     <div class="progress-wrap" id="progressWrap" aria-hidden="true">
       <div class="progress"><i id="progressBar" style="width:0%"></i></div>
       <span class="badge" id="progressLabel">0%</span>
@@ -247,14 +232,14 @@
     <!-- Tag filter chips -->
     <div class="chip-row" id="tagChips" role="tablist" aria-label="Document tag filters"></div>
 
-    <!-- Sections render here -->
+    <!-- Sections mount -->
     <div id="sections"></div>
   </div>
 
   <script>
     // Configure paths/versions here
-    window.APP_VERSION  = window.APP_VERSION  || "2025.9.51";
-    window.MANIFEST_URL = "docs/manifest.json";   <!-- lives inside /docs -->
+    window.APP_VERSION  = window.APP_VERSION  || "2025.9.69";
+    window.MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json"; // your docs manifest lives under /docs
     window.CACHE_NAME   = window.CACHE_NAME   || ("tfs-docs-" + window.APP_VERSION);
   </script>
   <script src="app.js" defer></script>
