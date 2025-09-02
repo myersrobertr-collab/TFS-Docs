@@ -1,7 +1,18 @@
 {
-  "version": "2025.9.12",
-  "tagMeta": ["G600", "G280", "Manuals", "Admin", "Misc", "International"],
+  "version": "2025.9.13",
+  "tagMeta": ["G600", "G280", "Manuals", "Checklists", "Admin", "EMER", "International"],
   "sections": [
+    {
+      "title": "EMER",
+      "tags": ["EMER"],
+      "items": [
+        { "label": "TFS ERP",               "href": "docs/TFS ERP.pdf",                                    "tags": ["EMER"] },
+        { "label": "Traveler Insurance",    "href": "docs/Business Traveler Insurance.pdf",               "tags": ["EMER"] },
+        { "label": "Aircraft EMER Inv",     "href": "docs/AC Emer Inventory.pdf",                          "tags": ["EMER"] },
+        { "label": "ATC Zero",              "href": "docs/ATC 0 TIBA.pdf",                                 "tags": ["EMER"] }
+      ]
+    },
+    
     {
       "title": "G600",
       "tags": ["G600"],
@@ -16,20 +27,23 @@
       "title": "G280",
       "tags": ["G280"],
       "items": [
-        { "label": "G280 MEL",               "href": "docs/G280 MEL.pdf",               "tags": ["G280", "Manuals"] },
-        { "label": "G280 Norm Checklist",    "href": "docs/G280 Norm Checklist.pdf",    "tags": ["G280", "Manuals"] },
-        { "label": "G280 Cold WX Ops",       "href": "docs/G280 Cold WX.pdf",       "tags": ["G280", "Misc"] },
-        { "label": "G280 Flight Plan Codes", "href": "docs/G280 FLT Plan Codes.pdf",    "tags": ["G280", "Admin"] }
+        { "label": "G280 MEL",               "href": "docs/G280 MEL.pdf",                 "tags": ["G280"] },
+        { "label": "Collins Quick Ref",      "href": "docs/Collins Quick Ref.pdf",        "tags": ["G280"] },
+        { "label": "G280 Norm Checklist",    "href": "docs/G280 Norm Checklist.pdf",      "tags": ["G280"] },
+        { "label": "G280 Cold WX Ops",       "href": "docs/G280 Cold WX.pdf",             "tags": ["G280"] },
+        { "label": "G280 GPS Spoofing",       "href": "docs/G280 GPS Spoof.pdf",          "tags": ["G280"] },
+         { "label": "G280 FMS Settings",       "href": "docs/FMS.pdf",                     "tags": ["G280"] },
+        { "label": "G280 Flight Plan Codes", "href": "docs/G280 FLT Plan Codes.pdf",      "tags": ["G280"] }
       ]
     },
     {
       "title": "Manuals",
       "tags": ["Manuals"],
       "items": [
-        { "label": "FOM",            "href": "docs/FOM.pdf",            "tags": ["Manuals", "Admin"] },
-        { "label": "IOM SkyBriefs",  "href": "docs/IOM SkyBriefs.pdf",  "tags": ["Manuals"] },
-        { "label": "IOM",  "href": "docs/IOM.pdf",                      "tags": ["Manuals"] },
-        { "label": "CAM",            "href": "docs/CAM.pdf",            "tags": ["Manuals"] }
+        { "label": "FOM",            "href": "docs/FOM.pdf",                          "tags": ["Manuals"] },
+        { "label": "IOM SkyBriefs",  "href": "docs/IOM SkyBriefs.pdf",                "tags": ["Manuals"] },
+        { "label": "IOM",  "href": "docs/IOM.pdf",                                    "tags": ["Manuals"] },
+        { "label": "CAM",            "href": "docs/CAM.pdf",                          "tags": ["Manuals"] }
       ]
     },
     {
@@ -37,18 +51,30 @@
       "tags": ["International"],
       "items": [
         { "label": "Oceanic Crossing Checklist", "href": "docs/Oceanic Crossing Checklist.pdf", "tags": ["International"] },
+        { "label": "ICAO HF Network",       "href": "docs/ICAO HF Networks.pdf",                "tags": ["International"] },
         { "label": "NAT Comm Issues",            "href": "docs/NAT Comm Issues.pdf",            "tags": ["International"] },
+        { "label": "China RVSM",            "href": "docs/China RVSM.pdf",                      "tags": ["International"] },
         { "label": "RNAV RNP",                   "href": "docs/RNAV RNP.pdf",                   "tags": ["International"] }
       ]
     },
+    
     {
-      "title": "Admin & Misc",
-      "tags": ["Admin", "Misc"],
+      "title": "Checklists",
+      "tags": ["Checklists],
       "items": [
-        { "label": "TFS ERP",               "href": "docs/TFS ERP.pdf",               "tags": ["Admin"] },
-        { "label": "TFS Contacts",          "href": "docs/TFS Contacts.pdf",          "tags": ["Admin", "Misc"] },
+           { "label": "Short Flight Segment",  "href": "docs/Short Flight Segment.pdf",    "tags": ["Checklists"] },
+           { "label": "Local Area",  "href": "docs/G280 Local Area Checklist.pdf",         "tags": ["Checklists"] },
+           { "label": "Jumpseat",  "href": "docs/Jump Seat Checklist.pdf",                  "tags": ["Checklists"] }
+      ]
+    },
+  
+    {
+      "title": "Admin",
+      "tags": ["Admin"],
+      "items": [
+        { "label": "TFS Contacts",          "href": "docs/TFS Contacts.pdf",          "tags": ["Admin"] },
         { "label": "Expense Cheat Sheet",   "href": "docs/Expense Cheat Sheet.pdf",   "tags": ["Admin"] },
-        { "label": "Short Flight Segment",  "href": "docs/Short Flight Segment.pdf",  "tags": ["Misc"] }
+       
       ]
     }
   ]
