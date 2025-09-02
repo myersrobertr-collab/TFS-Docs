@@ -1,9 +1,12 @@
-/* TFS Documents – app shell (stable baseline)
-   - Buttons open documents in a new tab (as before)
-   - Tag chips glow when active; EMER styling preserved
-   - Section header shows ONLY the right-side "<GROUP> (count)" chip
+/* TFS Documents – app shell (manifest-compatible)
+   Fixes:
+   - Use item.href (or item.url) from docs/manifest.json
+   - Use section.tags (or section.title) for grouping
+   UI:
+   - Section header shows ONLY right-side "<GROUP> (count)"
+   - Each doc renders as a single button with the doc name (opens in new tab)
    - Visible progress bar during "Download Docs"
-   - "Update recommended" appears when cache is stale
+   - "Update recommended" badge when cache is stale
 */
 
 const STATE = {
@@ -35,7 +38,7 @@ async function init() {
     if (!res.ok) throw new Error(`Failed to load manifest: ${res.status}`);
     const data = await res.json();
 
-    // Expected: { version, sections: [{ title, tag, items: [{ label, url, tags?[] }] }] }
+    // Expected: { version, sections: [{ title, tags?:[], items: [{ label, href|url, tags?[] }] }] }
     STATE.manifestVersion = data.version || '—';
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags     = Array.from(new Set(['ALL', ...collectTags(STATE.sections)]));
@@ -55,19 +58,23 @@ async function init() {
 
 function normalizeSections(sections) {
   return sections.map(s => {
+    // Items: ensure tags array; keep both href & url if present
     const items = (s.items || []).map(it => ({
       ...it,
-      tags: Array.isArray(it.tags) ? it.tags : (it.tag ? [it.tag] : (s.tag ? [s.tag] : []))
+      tags: Array.isArray(it.tags) ? it.tags : (it.tag ? [it.tag] : []),
+      _href: getItemUrl(it) // store resolved key name for convenience
     }));
-    const tag = s.tag || null;
+    const groupTag = Array.isArray(s.tags) && s.tags.length ? s.tags[0] : (s.tag || null);
+    const title = s.title || groupTag || 'Group';
     const count = items.length;
-    return { ...s, items, tag, count, title: s.title || s.tag || 'Group' };
+    return { ...s, items, tag: groupTag, title, count };
   });
 }
 
-function collectTags(seions) {
+function collectTags(sections) {
   const set = new Set();
-  seions.forEach(s => {
+  sections.forEach(s => {
+    if (Array.isArray(s.tags)) s.tags.forEach(t => set.add(t));
     if (s.tag) set.add(s.tag);
     (s.items || []).forEach(it => (it.tags || []).forEach(t => set.add(t)));
   });
@@ -133,7 +140,8 @@ function renderSections() {
 
     const countChip = document.createElement('span');
     countChip.className = 'chip chip--count';
-    countChip.textContent = `${section.title} (${visibleItems.length})`;
+    const groupName = section.title || section.tag || 'Group';
+    countChip.textContent = `${groupName} (${visibleItems.length})`;
 
     head.appendChild(spacer);
     head.appendChild(countChip);
@@ -150,7 +158,7 @@ function renderSections() {
 
       const a = document.createElement('a');
       a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
-      a.href   = item.url || '#'; // use manifest URL directly (works like original)
+      a.href   = resolveHref(item._href);  // use href from manifest
       a.target = '_blank';
       a.rel    = 'noopener';
       a.textContent = item.label || item.name || 'Document';
@@ -205,11 +213,34 @@ async function prefetchAll() {
 function collectAllUrls() {
   const urls = new Set();
   // Prefetch all document URLs exactly as provided (matches original behavior)
-  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(it.url); }));
+  STATE.sections.forEach(s => (s.items || []).forEach(it => {
+    const u = getItemUrl(it);
+    if (u) urls.add(resolveHref(u));
+  }));
   // Also cache the manifest & app shell
   urls.add(window.MANIFEST_URL);
   urls.add('index.html'); urls.add('app.js'); urls.add('sw.js');
   return Array.from(urls);
+}
+
+/* ---------- helpers ---------- */
+
+// read either href or url from the manifest item
+function getItemUrl(item) {
+  return item?.href || item?.url || '';
+}
+
+// Resolve relative/absolute; lightly encode spaces
+function resolveHref(u) {
+  if (!u) return '#';
+  try {
+    if (/^https?:\/\//i.test(u)) return u;                 // absolute
+    if (u.startsWith('/')) return new URL(u, location.origin).href; // root-relative
+    const safe = u.replace(/ /g, '%20');                   // encode spaces
+    return new URL(safe, location.href).href;              // relative to page
+  } catch {
+    return u;
+  }
 }
 
 function showProgress(show) {
@@ -249,6 +280,7 @@ function isStale(ts) {
   const ageDays = (Date.now() - ts) / (1000*60*60*24);
   return ageDays > STALE_DAYS;
 }
+
 function sanitize(s) {
   return String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 }
