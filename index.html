@@ -322,35 +322,50 @@
     $('#updateDismiss')?.addEventListener('click', hideUpdateBanner);
 
     // -------- manifest loader --------
-    async function loadDocs() {
-      try {
-        const r = await fetch(`${MANIFEST_URL}?v=${APP_VERSION}`, { cache: 'no-cache' });
-        if (!r.ok) throw new Error('manifest missing');
-        const m = await r.json();
+    function setVersionBadge(manifestVersion, appVersion) {
+  const el = document.getElementById('versionBadge');
+  if (!el) return;
+  // show manifest (content) version first, fall back to app code version
+  const v = (manifestVersion && String(manifestVersion).trim()) ||
+            (appVersion && String(appVersion).trim()) || '';
+  el.textContent = v ? `v${v}` : '';
+}
 
-        // tags and sections
-        TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
-        DOCS = Array.isArray(m.sections) ? m.sections : [];
+async function loadDocs() {
+  try {
+    const r = await fetch(`${MANIFEST_URL}?v=${APP_VERSION}`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('manifest missing');
+    const m = await r.json();
 
-        // set/update selected tag if needed
-        if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
-          selectedTag = 'All';
-          localStorage.setItem('tfs.selectedTag', selectedTag);
-        }
+    // tags and sections
+    TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
+    DOCS = Array.isArray(m.sections) ? m.sections : [];
 
-        // update banner if version changed
-        const prev = localStorage.getItem('tfs.manifestVersion');
-        if (m.version && prev && prev !== m.version) showUpdateBanner();
-        if (m.version) localStorage.setItem('tfs.manifestVersion', m.version);
-      } catch (e) {
-        console.warn('Manifest load failed, using fallback', e);
-        TAGS = [];
-        DOCS = [{ title: "MISC", items: [] }];
-      }
-
-      renderTagBar();
-      renderSections(DOCS);
+    // keep selected tag valid
+    if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
+      selectedTag = 'All';
+      localStorage.setItem('tfs.selectedTag', selectedTag);
     }
+
+    // version badge
+    setVersionBadge(m.version, APP_VERSION);
+
+    // update banner if manifest version changed
+    const prev = localStorage.getItem('tfs.manifestVersion');
+    if (m.version && prev && prev !== m.version) showUpdateBanner?.();
+    if (m.version) localStorage.setItem('tfs.manifestVersion', m.version);
+  } catch (e) {
+    console.warn('Manifest load failed, using fallback', e);
+    TAGS = [];
+    DOCS = [{ title: "MISC", items: [] }];
+
+    // show app version if manifest unavailable
+    setVersionBadge('', APP_VERSION);
+  }
+
+  renderTagBar();
+  renderSections(DOCS);
+}
 
     // -------- wire UI --------
     $('#q')?.addEventListener('input', () => renderSections(DOCS));
