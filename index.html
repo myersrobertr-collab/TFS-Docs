@@ -1,152 +1,103 @@
-// ===== Globals =====
-const APP_VERSION  = window.APP_VERSION || "dev";
-const MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json";
-const CACHE_NAME   = window.CACHE_NAME || ("tfs-docs-" + APP_VERSION);
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TFS Documents</title>
+  <link rel="manifest" href="app.webmanifest" />
+  <meta name="theme-color" content="#0b0f19" />
 
-let TAGS = [];
-let DOCS = [];
-let SELECTED = localStorage.getItem("tfs.selectedTag") || "All";
+  <!-- One place to bump app cache/version -->
+  <script>
+    window.APP_VERSION  = "2025.9.20";          // ← bump when you change code
+    window.MANIFEST_URL = "docs/manifest.json";
+    window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
+  </script>
 
-// ===== Boot =====
-document.getElementById("appVerText").textContent = APP_VERSION;
-document.getElementById("dlProg").style.width = "0%";
-
-// Register SW (optional but recommended for offline)
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
-}
-
-loadDocs();
-
-async function loadDocs() {
-  try {
-    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache:"no-cache" });
-    if (!r.ok) throw new Error("manifest fetch failed");
-    const m = await r.json();
-
-    // versions
-    if (m.version) {
-      const el = document.getElementById("manVer");
-      document.getElementById("manVerText").textContent = m.version;
-      el.style.display = "inline-block";
-      const prev = localStorage.getItem("tfs.manifestVersion");
-      if (prev && prev !== m.version) {
-        // light hint—flash appVer chip
-        const av = document.getElementById("appVer");
-        av.style.boxShadow = "0 0 0 2px #22c55e inset";
-        setTimeout(()=>{ av.style.boxShadow="none"; }, 1800);
-      }
-      localStorage.setItem("tfs.manifestVersion", m.version);
+  <style>
+    :root{
+      --bg:#0b0f19; --text:#e5e7eb; --muted:#9ca3af;
+      --card:#111827; --line:#1f2937;
+      --chip:#1f2937; --chipActive:#263447;
+      --btn:#1c2433; --btnText:#f3f4f6; --ring:#334155;
+      --accent:#2563eb; --emer:#e4002b; --emer-dark:#b80022;
     }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:14px 16px 40px}
 
-    TAGS = ["All", ...(Array.isArray(m.tagMeta) ? m.tagMeta : [])];
-    DOCS = Array.isArray(m.sections) ? m.sections : [];
+    /* Header / banner */
+    .bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand h1{font-size:18px;margin:0}
+    .note{font-size:12px;color:var(--muted)}
+    .ver{padding:3px 8px;border-radius:8px;background:#0f172a;border:1px solid var(--line);font-size:12px}
+    .actions{display:flex;gap:10px;align-items:center}
 
-  } catch (e) {
-    console.warn("Using fallback manifest", e);
-    TAGS = ["All"];
-    DOCS = [{ title:"MISC", items:[] }];
-  }
-  renderChips();
-  renderSections();
-  wireDownload();
-}
-
-// ===== Render chips =====
-function renderChips() {
-  const host = document.getElementById("chips");
-  host.innerHTML = "";
-  TAGS.forEach(tag => {
-    const b = document.createElement("button");
-    b.className = "chip" + (tag === "EMER" ? " chip-emer" : "");
-    if (tag === SELECTED) b.classList.add("active");
-    b.textContent = tag;
-    b.onclick = () => {
-      SELECTED = tag;
-      localStorage.setItem("tfs.selectedTag", SELECTED);
-      renderChips();
-      renderSections();
-    };
-    host.appendChild(b);
-  });
-}
-
-// ===== Render sections =====
-function renderSections() {
-  const host = document.getElementById("sections");
-  host.innerHTML = "";
-
-  const match = (sec) => {
-    if (SELECTED === "All") return true;
-    const tags = Array.isArray(sec.tags) ? sec.tags : [];
-    return tags.includes(SELECTED);
-  };
-
-  DOCS.filter(match).forEach(sec => {
-    const isEmer = (sec.tags || []).includes("EMER");
-
-    const secEl = document.createElement("section");
-    secEl.className = "section";
-
-    const h = document.createElement("h2");
-    h.className = isEmer ? "sectionTitle title-emer" : "sectionTitle";
-    h.textContent = sec.title || "";
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    badge.textContent = (sec.items?.length || 0) + " docs";
-    h.appendChild(badge);
-
-    const grid = document.createElement("div");
-    grid.className = "grid";
-
-    (sec.items || []).forEach(it => {
-      const card = document.createElement("div");
-      card.className = "card" + (isEmer ? " card-emer" : "");
-      const label = document.createElement("div");
-      label.className = "label";
-      label.textContent = it.desc || " ";
-      const a = document.createElement("a");
-      a.className = "btn" + (isEmer ? " btn-emer" : "");
-      a.href = it.href;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = it.label || "Open";
-      card.append(label, a);
-      grid.appendChild(card);
-    });
-
-    secEl.append(h, grid);
-    host.appendChild(secEl);
-  });
-}
-
-// ===== Offline download =====
-function wireDownload() {
-  const btn  = document.getElementById("dlBtn");
-  const prog = document.getElementById("dlProg");
-
-  btn.onclick = async () => {
-    // Build unique URL list
-    const urls = new Set([
-      "./", "index.html", "app.webmanifest", "sw.js"
-    ]);
-    DOCS.forEach(sec => (sec.items||[]).forEach(it => urls.add(it.href)));
-
-    // Prefetch with progress
-    const all = Array.from(urls);
-    const cache = await caches.open(CACHE_NAME);
-    let done = 0;
-
-    // To make progress visible, stream via fetch then cache.put
-    for (const u of all) {
-      try {
-        const res = await fetch(u, { cache:"no-cache" });
-        if (res.ok) await cache.put(new Request(u), res.clone());
-      } catch (_) {}
-      done++;
-      prog.style.width = Math.round(done / all.length * 100) + "%";
+    /* Download button + progress */
+    .btn-square{
+      background:#0f172a;color:var(--text);border:1px solid var(--line);
+      border-radius:10px;padding:.55rem .8rem;font-weight:700;cursor:pointer
     }
-    // brief completion flash
-    setTimeout(()=>{ prog.style.width = "0%"; }, 1200);
-  };
-}
+    .btn-square:hover{filter:brightness(1.06)}
+    .progress{height:6px;background:#0f172a;border:1px solid var(--line);
+      border-radius:8px;overflow:hidden;width:180px}
+    .progress>span{display:block;height:100%;width:0;background:var(--accent)}
+
+    /* Tag chips */
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+    .chip{
+      background:var(--chip);border:1px solid var(--line);
+      color:var(--text);padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer
+    }
+    .chip.active{background:var(--chipActive)}
+    .chip-emer{background:var(--emer);border-color:var(--emer-dark)}
+    .chip-emer.active{background:var(--emer-dark)}
+
+    /* Sections */
+    .section{margin:18px 0}
+    .sectionTitle{
+      font-size:16px;font-weight:700;margin:0 0 10px;color:#cbd5e1;display:inline-flex;gap:8px;align-items:center
+    }
+    .badge{font-size:11px;background:#0f172a;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:#cbd5e1}
+    .title-emer{color:#fff;background:var(--emer);padding:6px 10px;border-radius:10px;border:1px solid var(--emer-dark);display:inline-flex;gap:8px;align-items:center}
+
+    /* Grid and cards */
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.grid{grid-template-columns:1fr}}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+    .card-emer{border-color:var(--emer-dark)}
+    .label{font-size:12px;color:var(--muted);min-height:24px;margin-bottom:8px}
+    .btn{
+      display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnText);
+      border:1px solid var(--ring);border-radius:12px;padding:11px 12px;font-weight:800;text-decoration:none
+    }
+    .btn:hover{filter:brightness(1.06)}
+    .btn-emer{background:var(--emer);border-color:var(--emer-dark);color:#fff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <div class="brand">
+        <h1>📁 TFS Documents</h1>
+        <span class="note">Works offline</span>
+        <span class="ver" id="appVer">App v<span id="appVerText"></span></span>
+        <span class="ver" id="manVer" style="display:none">Docs v<span id="manVerText"></span></span>
+      </div>
+      <div class="actions">
+        <button id="dlBtn" class="btn-square">Download for offline</button>
+        <div class="progress" title="Download progress"><span id="dlProg"></span></div>
+      </div>
+    </div>
+
+    <div class="chips" id="chips"></div>
+    <div id="sections"></div>
+  </div>
+
+  <script defer src="app.js"></script>
+</body>
+</html>
