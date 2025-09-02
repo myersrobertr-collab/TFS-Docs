@@ -35,10 +35,45 @@
     .btn:hover{filter:brightness(1.06)}
     .primary{background:var(--accent2);border-color:var(--accent2)}
     .muted{color:var(--muted);font-size:13px}
+
+    /* Install banner + update toast */
+    .banner, .toast {
+      position:sticky; top:0; z-index:9999;
+      background:#0b1220; color:#e5e7eb;
+      padding:.65rem .9rem; border:1px solid #1f2937; border-radius:12px;
+      display:flex; align-items:center; gap:.6rem; justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .banner button, .toast button {
+      background:#111827; color:#fff; border:0; border-radius:10px;
+      padding:.45rem .75rem; font-weight:600;
+    }
+    .toast { background:#091423; border-color:#1e2b40; }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <!-- Install banner placeholder -->
+    <div id="installBanner" style="display:none" class="banner">
+      <div>
+        <strong>Add to Home Screen</strong><br />
+        <small id="installHint">Open in Safari → Share → <em>Add to Home Screen</em> for offline access.</small>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button id="installAction" style="display:none">Install</button>
+        <button id="installDismiss">Got it</button>
+      </div>
+    </div>
+
+    <!-- Update toast placeholder -->
+    <div id="updateToast" style="display:none" class="toast">
+      <div><strong>New docs available</strong> — update to refresh the offline cache.</div>
+      <div style="display:flex;gap:.5rem">
+        <button id="doUpdate" class="primary" style="background:#E4002B;border:0">Update</button>
+        <button id="dismissUpdate">Dismiss</button>
+      </div>
+    </div>
+
     <header>
       <div>
         <h1>🗂️ TFS Documents</h1>
@@ -98,14 +133,12 @@
 
     // --- offline prefetch + service worker registration ---
     async function wireDownloadForOffline(sections) {
-      // Register SW (if you have sw.js in root)
       if ('serviceWorker' in navigator) {
         try { await navigator.serviceWorker.register('sw.js'); } catch (e) { /* ignore */ }
       }
       const APP_VERSION = window.APP_VERSION || 'dev';
-
       const urls = new Set([
-        './', 'index.html', 'app.webmanifest', 'sw.js',
+        './','index.html','app.webmanifest','sw.js',
         ...sections.flatMap(s => (s.items||[]).map(i => i.href))
       ]);
       try {
@@ -123,27 +156,108 @@
 
     // click handler for offline button
     $('#offlineBtn')?.addEventListener('click', () => wireDownloadForOffline(window.DOCS || []));
+
+    // =========================
+    // Install banner (iOS + Android)
+    // =========================
+    (function setupInstallBanner(){
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+      const banner = $('#installBanner');
+      const hint = $('#installHint');
+      const dismiss = $('#installDismiss');
+      const installBtn = $('#installAction');
+
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Android / Chrome
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'inline-block';
+        hint.textContent = 'Tap Install to add to your Home Screen for offline access.';
+        if (!isStandalone) banner.style.display = 'flex';
+      });
+
+      // iOS: show instructions if not installed
+      if (isIos && !isStandalone) {
+        installBtn.style.display = 'none';
+        hint.innerHTML = 'Open in Safari → Share → <em>Add to Home Screen</em> for offline access.';
+        banner.style.display = 'flex';
+      }
+
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch {}
+        deferredPrompt = null;
+        banner.style.display = 'none';
+      });
+
+      dismiss.addEventListener('click', () => banner.remove());
+    })();
+
+    // =========================
+    // Update toast (detect new docs and refresh caches)
+    // =========================
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+
+    async function checkForDocUpdates(manifestJson){
+      // Hash the manifest content (or version field if you add one)
+      const signature = await sha256Hex(JSON.stringify(manifestJson));
+      const KEY = 'tfs-docs-manifest-hash';
+
+      const prev = localStorage.getItem(KEY);
+      if (prev && prev !== signature) {
+        // show toast
+        const toast = $('#updateToast');
+        const btnUpdate = $('#doUpdate');
+        const btnDismiss = $('#dismissUpdate');
+        toast.style.display = 'flex';
+
+        btnDismiss.onclick = () => toast.remove();
+        btnUpdate.onclick = async () => {
+          // clear old tfs-docs-* caches then prefetch the new set
+          const keys = await caches.keys();
+          await Promise.all(keys.filter(k => k.startsWith('tfs-docs-')).map(k => caches.delete(k)));
+          await wireDownloadForOffline(window.DOCS || []);
+          localStorage.setItem(KEY, signature);
+          toast.innerHTML = '<div><strong>Docs updated.</strong> You\'re on the latest set.</div>';
+          setTimeout(()=>toast.remove(), 2500);
+        };
+      } else if (!prev) {
+        // first run — remember current
+        localStorage.setItem(KEY, signature);
+      }
+    }
   </script>
 
-  <!-- 🔻 put your loader script RIGHT HERE, before </body> -->
+  <!-- 🔻 loader script: fetch manifest, render, and run update check -->
   <script>
-    const APP_VERSION = "2025.09.01-2";       // bump for cache busting
+    const APP_VERSION = "2025.09.01-3";       // bump for cache busting of app shell
     let DOCS = [];                            // filled from manifest
     const MANIFEST_URL = "docs/manifest.json";
 
     async function loadDocs() {
+      let manifest = { sections: [{ title: "MISC", items: [] }] };
       try {
         const r = await fetch(MANIFEST_URL, { cache: "no-cache" });
-        if (!r.ok) throw new Error("manifest missing");
-        const m = await r.json();
-        DOCS = m.sections || [];
-      } catch {
-        // fallback if manifest not found:
-        DOCS = [{ title: "MISC", items: [] }];
-      }
+        if (r.ok) manifest = await r.json();
+      } catch {}
+      DOCS = manifest.sections || [];
       window.DOCS = DOCS; // expose to other scripts/handlers
       renderSections(DOCS);
-      // (offline prefetch is manual via the button)
+      // check if manifest changed (offer update)
+      try { await checkForDocUpdates(manifest); } catch {}
+    }
+
+    // service worker (fire-and-forget)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
     }
 
     loadDocs(); // kick off
