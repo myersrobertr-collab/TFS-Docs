@@ -7,190 +7,166 @@
   <link rel="manifest" href="app.webmanifest">
   <title>TFS Documents</title>
 
-  <style>
-    :root {
-      --bg: #0f1420;
-      --panel: #121826;
-      --text: #e7ebf3;
-      --muted: #a9b1c3;
-      --brand: #2eaadc;
-      --danger: #e5484d;
+  /* ===========================
+   VISUAL REFRESH OVERRIDES
+   (paste below your existing styles)
+   =========================== */
 
-      --chip-bg: #1a2333;
-      --chip-border: #2a3650;
-      --chip-glow: 0 0 0 6px rgba(46,170,220,.12), 0 0 18px rgba(46,170,220,.15);
-      --chip-glow-faint: 0 0 0 4px rgba(46,170,220,.08);
+:root{
+  --brand: #37b3e7;         /* crisper brand blue */
+  --panel: #121826;
+  --text: #eaf0ff;
+  --muted:#a9b1c3;
 
-      --radius: 14px;
-    }
+  /* Blue/gray chip base */
+  --chip-bg: #11233a;
+  --chip-border: #334a70;
+  --chip-glow: 0 0 0 6px rgba(55,179,231,.12), 0 0 18px rgba(55,179,231,.16);
+  --chip-glow-faint: 0 0 0 4px rgba(55,179,231,.08);
 
-    html, body {
-      height: 100%;
-      background: radial-gradient(1200px 800px at 20% -10%, #192133 0%, #0f1420 60%) fixed,
-                  linear-gradient(#0f1420, #0f1420);
-      color: var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      margin: 0;
-    }
+  /* EMER palette (metallic red) */
+  --emer-top: #ff5f6b;
+  --emer-core: #b1141e;
+  --emer-bottom: #2a0a0d;
+  --emer-edge: #ffd6d8;
+  --emer-border: #ff8086;
+}
 
-    .app {
-      max-width: 1100px;
-      margin: 36px auto 72px;
-      padding: 0 16px;
-    }
+/* Make all “buttons” ~35% narrower & center text */
+button.btn,
+a.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 
-    header {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
+button.btn {            /* was 10px 14px */
+  padding: 10px 9px;    /* ~35% less horizontal padding */
+}
 
-    .title { font-size: 22px; letter-spacing: .2px; font-weight: 650; }
-    .subtle { color: var(--muted); font-size: 13px; }
+a.link {                /* was 10px 12px */
+  padding: 10px 8px;    /* ~35% less horizontal padding */
+}
 
-    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* Chips narrower too (optional, keeps proportions tidy) */
+.chip {                 /* was 8px 12px */
+  padding: 8px 8px;
+}
 
-    button.btn {
-      background: var(--panel); color: var(--text);
-      border: 1px solid #263247; border-radius: 12px;
-      padding: 10px 14px; font-weight: 600; font-size: 14px;
-      cursor: pointer; transition: transform .06s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-    button.btn:hover { transform: translateY(-1px); border-color: #2f3d57; }
-    button.btn:active { transform: translateY(0); }
+/* Higher-contrast blue/gray buttons (non-EMER) */
+a.link {
+  background:
+    linear-gradient(180deg, #2c3f61 0%, #243551 55%, #1a2740 100%);
+  border: 1px solid #384f79;
+  color: var(--text);
+  font-weight: 750;
+}
+a.link:hover {
+  transform: translateY(-1px);
+  border-color: #4a689d;
+  box-shadow: 0 10px 22px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
+}
 
-    /* -------- Chips -------- */
-    .chip-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin: 14px 0 22px;
-    }
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: var(--chip-bg);
-      border: 1px solid var(--chip-border);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: .2px;
-      cursor: pointer;
-      user-select: none;
-      transition: box-shadow .2s ease, border-color .2s ease, transform .06s ease, background .2s ease;
-      box-shadow: none;
-      outline: none;
-    }
-    .chip:hover { border-color: #3a4a6b; transform: translateY(-1px); }
-    .chip:active { transform: translateY(0); }
+/* Base chip: deeper blue, subtle gloss */
+.chip{
+  background:
+    linear-gradient(180deg, #1f3556 0%, #182b47 58%, #15243c 100%);
+  border: 1px solid var(--chip-border);
+  color: #eaf0ff;
+  font-weight: 700;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset,
+              0 10px 22px rgba(0,0,0,.28);
+}
+.chip:hover{ border-color:#4a689d; }
+.chip--active{
+  border-color:#55c5f0;
+  box-shadow: var(--chip-glow), 0 1px 0 rgba(255,255,255,.08) inset;
+}
 
-    /* Selected tag chip = soft glow */
-    .chip--active {
-      border-color: #45b8e6;
-      box-shadow: var(--chip-glow);
-      background: linear-gradient(180deg, #1c2a40, #172237 60%, #152032);
-    }
+/* ================
+   EMER metallic shine
+   Apply to EMER chips AND EMER doc buttons.
+   - If your app already uses .danger for EMER doc links, this overrides it.
+   - You can also add .link--emer to any EMER link.
+   ================ */
 
-    /* EMER styling */
-    .chip--emer {
-      border-color: rgba(229,72,77,.65);
-      background: linear-gradient(180deg, #d12230, #1d080c 60%, #1a0e12);
-      color: #ffd6d7;
-    }
-    .chip--emer.chip--active {
-      box-shadow: 0 0 0 6px rgba(240, 3, 11, 0.14), 0 0 18px rgba(231, 56, 61, 0.18);
-      border-color: #ff8a90;
-    }
+.chip--emer,
+a.link.danger,
+a.link.link--emer{
+  position: relative;
+  overflow: hidden;
+  color: #ffecee;
+  border: 1px solid var(--emer-border);
+  background:
+    /* metallic body */
+    linear-gradient(180deg, var(--emer-top) 0%, #e0373f 18%, var(--emer-core) 55%, #6e0f16 80%, var(--emer-bottom) 100%),
+    /* subtle diagonal sheen */
+    linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%),
+    /* bottom burnish */
+    radial-gradient(120% 80% at 50% 120%, rgba(0,0,0,.35), transparent 60%);
+  box-shadow:
+    0 0 0 6px rgba(234, 49, 60, .14),
+    0 0 18px rgba(234, 49, 60, .20),
+    inset 0 1px 0 rgba(255,255,255,.15),
+    inset 0 -2px 4px rgba(0,0,0,.25);
+  transition: box-shadow .2s ease, transform .06s ease, border-color .2s ease;
+}
 
-    /* Count chip (e.g., G600 (9)) = outlined + faint glow */
-    .chip--count {
-      background: transparent;
-      border-style: dashed;
-      border-color: #3a4a6b;
-      box-shadow: var(--chip-glow-faint);
-      opacity: .95;
-    }
+/* Gloss highlight line (metal edge) */
+.chip--emer::after,
+a.link.danger::after,
+a.link.link--emer::after{
+  content:"";
+  position:absolute; left:0; right:0; top:0;
+  height:1px;
+  background: linear-gradient(90deg, transparent, var(--emer-edge), transparent);
+  opacity:.85;
+  pointer-events:none;
+}
 
-    /* -------- Sections -------- */
-    .section {
-      border: 1px solid #223149;
-      border-radius: var(--radius);
-      background: rgba(18,24,38,.6);
-      box-shadow: 0 8px 26px rgba(0,0,0,.28);
-      margin-bottom: 16px;
-      overflow: hidden;
-    }
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 16px;
-      border-bottom: 1px solid #1f2a42;
-      background: linear-gradient(180deg, rgba(20,28,44,.6), rgba(14,20,33,.4));
-    }
-    /* .section-title removed to avoid empty ruleset */
-    .section-body { padding: 8px 10px 10px; }
+/* Soft top gloss panel */
+.chip--emer::before,
+a.link.danger::before,
+a.link.link--emer::before{
+  content:"";
+  position:absolute; left:-10%; right:-10%; top:-10%;
+  height:60%;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.32), rgba(255,255,255,0) 70%);
+  pointer-events:none;
+  mix-blend-mode: screen;
+}
 
-    .doc-grid {
-      display: grid;
-      grid-template-columns: repeat(1, minmax(0, 1fr));
-      gap: 8px;
-    }
-    @media (min-width: 720px) { .doc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (min-width: 980px) { .doc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.chip--emer:hover,
+a.link.danger:hover,
+a.link.link--emer:hover{
+  transform: translateY(-1px);
+  border-color:#ffc2c5;
+  box-shadow:
+    0 0 0 8px rgba(255, 82, 92, .14),
+    0 0 28px rgba(255, 82, 92, .22),
+    inset 0 1px 0 rgba(255,255,255,.2),
+    inset 0 -3px 6px rgba(0,0,0,.3);
+}
 
-    .doc-card {
-      border: 1px solid #223149;
-      background: #121826;
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: grid;
-      gap: 6px;
-      transition: transform .06s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-    .doc-card:hover { transform: translateY(-1px); border-color: #2a3a58; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
+/* Keep the toolbar’s Remove button red but flatter (not metallic) */
+button.btn.danger,
+button.danger{
+  background: #3a1215;
+  border-color: #6a1e23;
+  color: #ffecee;
+}
 
-    /* The doc "button" */
-    .link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      background: #6c768b;
-      border: 1px solid #263247;
-      border-radius: 10px;
-      text-decoration: none;
-      color: var(--text);
-      font-weight: 700;
-      font-size: 14px;
-      transition: border-color .2s ease, transform .06s ease;
-    }
-    .link:hover { border-color: #35507a; transform: translateY(-1px); }
-    .danger { background: #401316; border-color: #ff6a70; color: #fff1f1; }
+/* Focus visibility (keyboard) */
+button.btn:focus-visible,
+a.link:focus-visible,
+.chip:focus-visible{
+  outline: 2px solid #9fe0ff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(159,224,255,.25);
+}
 
-    /* Progress bar */
-    .progress-wrap { display: none; align-items: center; gap: 10px; margin: 8px 0 2px; }
-    .progress {
-      height: 8px; width: 240px; border-radius: 999px;
-      background: #0e1728; border: 1px solid #25324b; overflow: hidden;
-    }
-    .progress > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #46b5e1, #2eaadc); transition: width .15s ease; }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
-      border: 1px solid #263247; background: #121826; color: var(--muted);
-    }
-    .badge--warn { color: #ffd9a8; border-color: #5a3d1a; background: #2a1d0f; }
-  </style>
 </head>
 <body>
   <div class="app">
