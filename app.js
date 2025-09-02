@@ -1,152 +1,198 @@
-// ===== Globals =====
-const APP_VERSION  = window.APP_VERSION || "dev";
-const MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json";
-const CACHE_NAME   = window.CACHE_NAME || ("tfs-docs-" + APP_VERSION);
+/* TFS Docs – App logic
+   - Loads docs/manifest.json
+   - Renders chips + sections (with count)
+   - EMER styling + chip
+   - Offline caching with progress (Cache Storage)
+   - Service worker registration
+*/
 
-let TAGS = [];
-let DOCS = [];
-let SELECTED = localStorage.getItem("tfs.selectedTag") || "All";
+(() => {
+  // ----- Config from index.html -----
+  const APP_VERSION  = window.APP_VERSION || 'dev';
+  const MANIFEST_URL = window.MANIFEST_URL || 'docs/manifest.json';
+  const CACHE_NAME   = window.CACHE_NAME   || ('tfs-docs-' + APP_VERSION);
 
-// ===== Boot =====
-document.getElementById("appVerText").textContent = APP_VERSION;
-document.getElementById("dlProg").style.width = "0%";
+  // ----- State -----
+  let TAGS = [];
+  let DOCS = [];
+  let SELECTED_TAG = localStorage.getItem('tfs.selectedTag') || 'All';
+  let MANIFEST_VERSION = null;
 
-// Register SW (optional but recommended for offline)
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
-}
+  // DOM helpers
+  const $  = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-loadDocs();
-
-async function loadDocs() {
-  try {
-    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache:"no-cache" });
-    if (!r.ok) throw new Error("manifest fetch failed");
-    const m = await r.json();
-
-    // versions
-    if (m.version) {
-      const el = document.getElementById("manVer");
-      document.getElementById("manVerText").textContent = m.version;
-      el.style.display = "inline-block";
-      const prev = localStorage.getItem("tfs.manifestVersion");
-      if (prev && prev !== m.version) {
-        // light hint—flash appVer chip
-        const av = document.getElementById("appVer");
-        av.style.boxShadow = "0 0 0 2px #22c55e inset";
-        setTimeout(()=>{ av.style.boxShadow="none"; }, 1800);
-      }
-      localStorage.setItem("tfs.manifestVersion", m.version);
-    }
-
-    TAGS = ["All", ...(Array.isArray(m.tagMeta) ? m.tagMeta : [])];
-    DOCS = Array.isArray(m.sections) ? m.sections : [];
-
-  } catch (e) {
-    console.warn("Using fallback manifest", e);
-    TAGS = ["All"];
-    DOCS = [{ title:"MISC", items:[] }];
+  // ----- Service worker -----
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
-  renderChips();
-  renderSections();
-  wireDownload();
-}
 
-// ===== Render chips =====
-function renderChips() {
-  const host = document.getElementById("chips");
-  host.innerHTML = "";
-  TAGS.forEach(tag => {
-    const b = document.createElement("button");
-    b.className = "chip" + (tag === "EMER" ? " chip-emer" : "");
-    if (tag === SELECTED) b.classList.add("active");
-    b.textContent = tag;
-    b.onclick = () => {
-      SELECTED = tag;
-      localStorage.setItem("tfs.selectedTag", SELECTED);
-      renderChips();
-      renderSections();
-    };
-    host.appendChild(b);
-  });
-}
+  // ----- Manifest Loader -----
+  async function loadDocs() {
+    try {
+      const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('manifest missing');
+      const m = await r.json();
+      TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
+      DOCS = Array.isArray(m.sections) ? m.sections : [];
+      MANIFEST_VERSION = m.version || null;
 
-// ===== Render sections =====
-function renderSections() {
-  const host = document.getElementById("sections");
-  host.innerHTML = "";
+      // show manifest version
+      const verEl = $('#manifestVer');
+      if (verEl) verEl.textContent = 'v' + (MANIFEST_VERSION || APP_VERSION);
 
-  const match = (sec) => {
-    if (SELECTED === "All") return true;
-    const tags = Array.isArray(sec.tags) ? sec.tags : [];
-    return tags.includes(SELECTED);
-  };
-
-  DOCS.filter(match).forEach(sec => {
-    const isEmer = (sec.tags || []).includes("EMER");
-
-    const secEl = document.createElement("section");
-    secEl.className = "section";
-
-    const h = document.createElement("h2");
-    h.className = isEmer ? "sectionTitle title-emer" : "sectionTitle";
-    h.textContent = sec.title || "";
-    const badge = document.createElement("span");
-    badge.className = "badge";
-    badge.textContent = (sec.items?.length || 0) + " docs";
-    h.appendChild(badge);
-
-    const grid = document.createElement("div");
-    grid.className = "grid";
-
-    (sec.items || []).forEach(it => {
-      const card = document.createElement("div");
-      card.className = "card" + (isEmer ? " card-emer" : "");
-      const label = document.createElement("div");
-      label.className = "label";
-      label.textContent = it.desc || " ";
-      const a = document.createElement("a");
-      a.className = "btn" + (isEmer ? " btn-emer" : "");
-      a.href = it.href;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = it.label || "Open";
-      card.append(label, a);
-      grid.appendChild(card);
-    });
-
-    secEl.append(h, grid);
-    host.appendChild(secEl);
-  });
-}
-
-// ===== Offline download =====
-function wireDownload() {
-  const btn  = document.getElementById("dlBtn");
-  const prog = document.getElementById("dlProg");
-
-  btn.onclick = async () => {
-    // Build unique URL list
-    const urls = new Set([
-      "./", "index.html", "app.webmanifest", "sw.js"
-    ]);
-    DOCS.forEach(sec => (sec.items||[]).forEach(it => urls.add(it.href)));
-
-    // Prefetch with progress
-    const all = Array.from(urls);
-    const cache = await caches.open(CACHE_NAME);
-    let done = 0;
-
-    // To make progress visible, stream via fetch then cache.put
-    for (const u of all) {
-      try {
-        const res = await fetch(u, { cache:"no-cache" });
-        if (res.ok) await cache.put(new Request(u), res.clone());
-      } catch (_) {}
-      done++;
-      prog.style.width = Math.round(done / all.length * 100) + "%";
+      // Keep SELECTED_TAG valid
+      if (SELECTED_TAG !== 'All' && !TAGS.includes(SELECTED_TAG)) {
+        SELECTED_TAG = 'All';
+        localStorage.setItem('tfs.selectedTag', SELECTED_TAG);
+      }
+    } catch (e) {
+      console.warn('Manifest load failed, using fallback', e);
+      TAGS = ['Misc'];
+      DOCS = [{ title: 'Misc', tags: ['Misc'], items: [] }];
+      MANIFEST_VERSION = null;
     }
-    // brief completion flash
-    setTimeout(()=>{ prog.style.width = "0%"; }, 1200);
-  };
-}
+
+    renderChips();
+    renderSections(DOCS);
+  }
+
+  // ----- Chips -----
+  function renderChips() {
+    const bar = $('#chips');
+    bar.innerHTML = '';
+
+    function chip(tag, active, extraClass='') {
+      const c = document.createElement('button');
+      c.className = `chip ${active ? 'active' : ''} ${extraClass}`.trim();
+      c.dataset.tag = tag;
+      c.textContent = tag;
+      c.addEventListener('click', () => {
+        SELECTED_TAG = tag;
+        localStorage.setItem('tfs.selectedTag', SELECTED_TAG);
+        // update active
+        $$('.chip').forEach(b => b.classList.toggle('active', b.dataset.tag === tag));
+        renderSections(DOCS);
+      });
+      return c;
+    }
+
+    bar.appendChild(chip('All', SELECTED_TAG === 'All'));
+    TAGS.forEach(t => {
+      const extra = (t === 'EMER') ? 'emer' : '';
+      bar.appendChild(chip(t, SELECTED_TAG === t, extra));
+    });
+  }
+
+  // ----- Sections -----
+  function isEmerSection(sec) {
+    const t = (sec.tags || []).map(s => String(s).toUpperCase());
+    return t.includes('EMER');
+  }
+
+  function itemVisibleByTag(item) {
+    if (SELECTED_TAG === 'All') return true;
+    const itags = (item.tags || []).map(s => String(s));
+    return itags.includes(SELECTED_TAG);
+  }
+
+  function renderSections(sections) {
+    const host = $('#sections');
+    host.innerHTML = '';
+
+    sections.forEach(sec => {
+      const items = (sec.items || []).filter(itemVisibleByTag);
+      if (!items.length) return;
+
+      const secEl = document.createElement('section');
+      secEl.className = 'section' + (isEmerSection(sec) ? ' emer' : '');
+
+      // header with count
+      secEl.innerHTML = `
+        <h2>${sec.title || ''} <span class="count">${items.length}</span></h2>
+        <div class="grid"></div>
+      `;
+      const grid = secEl.querySelector('.grid');
+
+      items.forEach(it => {
+        const card = document.createElement('div');
+        card.className = 'doc-card';
+        const href = it.href || '#';
+        const label = it.label || href;
+        card.innerHTML = `
+          <a class="doc-btn" href="${href}" target="_blank" rel="noopener">${label}</a>
+        `;
+        grid.appendChild(card);
+      });
+
+      host.appendChild(secEl);
+    });
+  }
+
+  // ----- Offline download -----
+  const progressWrap = $('#progressWrap');
+  const progressBar  = $('#progressBar');
+  const progressText = $('#progressText');
+  const offlineBtn   = $('#offlineBtn');
+
+  function setProgress(done, total) {
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    progressBar.style.width = `${pct}%`;
+    progressText.textContent = `${pct}%`;
+  }
+
+  function showProgress(show) {
+    progressWrap.style.display = show ? 'flex' : 'none';
+  }
+
+  function uniqueUrls(list) {
+    const s = new Set();
+    list.forEach(u => { if (u) s.add(u); });
+    return Array.from(s);
+  }
+
+  function collectAllUrls() {
+    const core = ['/', 'index.html', 'app.js', 'sw.js', 'app.webmanifest'];
+    const docUrls = DOCS.flatMap(sec => (sec.items || []).map(it => it.href)).filter(Boolean);
+    return uniqueUrls(core.concat(docUrls));
+  }
+
+  async function downloadForOffline() {
+    try {
+      offlineBtn.disabled = true;
+      showProgress(true);
+      setProgress(0, 1);
+
+      const urls = collectAllUrls();
+      const cache = await caches.open(CACHE_NAME);
+
+      let done = 0;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { cache: 'reload' });
+          if (res.ok) await cache.put(url, res.clone());
+        } catch (_) {
+          // ignore individual failures
+        }
+        done += 1;
+        setProgress(done, urls.length);
+      }
+
+      showProgress(false);
+      offlineBtn.disabled = false;
+      alert('✅ Documents cached for offline use.');
+    } catch (e) {
+      showProgress(false);
+      offlineBtn.disabled = false;
+      console.error(e);
+      alert('Could not cache all documents. Try again later.');
+    }
+  }
+
+  if (offlineBtn) {
+    offlineBtn.addEventListener('click', downloadForOffline);
+  }
+
+  // ----- Init -----
+  loadDocs();
+})();
