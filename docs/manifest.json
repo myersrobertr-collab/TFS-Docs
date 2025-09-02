@@ -1,79 +1,52 @@
 {
+  "tagMeta": ["G600", "G280", "Manuals", "Admin", "Misc", "International"],
   "sections": [
     {
       "title": "G600",
+      "tags": ["G600"],
       "items": [
-        { "label": "Quick Reference",          "href": "docs/G600%20Quick%20Reference.pdf" },
-        { "label": "Cockpit Ref Checklist",    "href": "docs/G600%20Cockpit%20Ref%20Checklist.pdf" },
-        { "label": "Flight Plan Codes",        "href": "docs/G600%20Flight%20Plan%20Codes.pdf" },
-        { "label": "Cold WX Ops",              "href": "docs/G600%20Cold%20WX.pdf" },
-        { "label": "Guided Visuals",           "href": "docs/G600%20Guided%20Visuals.pdf" },
-        { "label": "GCMS Custom Checklist",    "href": "docs/G600%20GCMS%20Custom%20Checklist.pdf" },
-        { "label": "GPS Spoof",                "href": "docs/G600%20GPS%20Spoof.pdf" },
-        { "label": "MEL",                      "href": "docs/G600%20MEL.pdf" },
-        { "label": "NEF",                      "href": "docs/G600%20NEF.pdf" }
+        { "label": "G600 Quick Reference", "href": "docs/G600 Quick Reference.pdf", "tags": ["G600", "Manuals"] },
+        { "label": "G600 MEL",              "href": "docs/G600 MEL.pdf",              "tags": ["G600", "Manuals"] },
+        { "label": "G600 NEF",              "href": "docs/G600 NEF.pdf",              "tags": ["G600", "Manuals"] },
+        { "label": "G600 Cold WX Ops",      "href": "docs/G600 Cold WX.pdf",          "tags": ["G600", "Misc"] }
       ]
     },
     {
       "title": "G280",
+      "tags": ["G280"],
       "items": [
-        { "label": "Normal Checklist",         "href": "docs/G280%20Norm%20Checklist.pdf" },
-        { "label": "Local Area Checklist",     "href": "docs/G280%20Local%20Area%20Checklist.pdf" },
-        { "label": "Flight Plan Codes",        "href": "docs/G280%20FLT%20Plan%20Codes.pdf" },
-        { "label": "Cold WX Ops",              "href": "docs/G280%20Cold%20WX.pdf" },
-        { "label": "GPS Spoof",                "href": "docs/G280%20GPS%20Spoof.pdf" },
-        { "label": "Collins Quick Ref",        "href": "docs/Collins%20Quick%20Ref.pdf" },
-        { "label": "FMS",                      "href": "docs/FMS.pdf" },
-        { "label": "MEL",                      "href": "docs/G280%20MEL.pdf" },
-        { "label": "Tow Bar",                  "href": "docs/Tow%20Bar.pdf" }
+        { "label": "G280 MEL",                 "href": "docs/G280 MEL.pdf",                 "tags": ["G280", "Manuals"] },
+        { "label": "G280 Norm Checklist",      "href": "docs/G280 Norm Checklist.pdf",      "tags": ["G280", "Manuals"] },
+        { "label": "G280 Cold WX Ops",         "href": "docs/G280 Cold WX.pdf",             "tags": ["G280", "Misc"] },
+        { "label": "G280 Flight Plan Codes",   "href": "docs/G280 FLT Plan Codes.pdf",      "tags": ["G280", "Admin"] }
       ]
     },
     {
       "title": "Manuals",
+      "tags": ["Manuals"],
       "items": [
-        { "label": "FOM",                      "href": "docs/FOM.pdf" },
-        { "label": "IOM SkyBriefs",            "href": "docs/IOM%20SkyBriefs.pdf" },
-        { "label": "CAM",                      "href": "docs/CAM.pdf" },
-        { "label": "Operator Plan",            "href": "docs/Operator%20Plan.pdf" },
-        { "label": "SD Direct User Manual",    "href": "docs/SD%20Direct%20User%20Manual.pdf" },
-        { "label": "Iridium User Manual",      "href": "docs/Iridium%20User%20Manual.pdf" },
-        { "label": "LOA",                      "href": "docs/LOA.pdf" }
-      ]
-    },
-    {
-      "title": "Admin",
-      "items": [
-        { "label": "TFS Contacts",             "href": "docs/TFS%20Contacts.pdf" },
-        { "label": "TFS ERP",                  "href": "docs/TFS%20ERP.pdf" },
-        { "label": "Expense Cheat Sheet",      "href": "docs/Expense%20Cheat%20Sheet.pdf" },
-        { "label": "EFB Doc",                  "href": "docs/EFB%20Doc.pdf" },
-        { "label": "Business Traveler Insurance", "href": "docs/Business%20Traveler%20Insurance.pdf" },
-        { "label": "TFS Crisis Response",      "href": "docs/TFS%20Crisis%20Response.pdf" },
-        { "label": "Special Airport Qual List","href": "docs/TFS%20Special%20Airport%20Qualification%20List.pdf" },
-        { "label": "Jump Seat Checklist",      "href": "docs/Jump%20Seat%20Checklist.pdf" },
-        { "label": "AC Emergency Inventory",   "href": "docs/AC%20Emer%20Inventory.pdf" }
+        { "label": "FOM", "href": "docs/FOM.pdf", "tags": ["Manuals", "Admin"] },
+        { "label": "IOM", "href": "docs/IOM SkyBriefs.pdf", "tags": ["Manuals"] },
+        { "label": "CAM", "href": "docs/CAM.pdf", "tags": ["Manuals"] }
       ]
     },
     {
       "title": "International",
+      "tags": ["International"],
       "items": [
-        { "label": "NAT Comm Issues",          "href": "docs/NAT%20Comm%20Issues.pdf" },
-        { "label": "Oceanic Contingency",      "href": "docs/Oceanic%20Contingency.pdf" },
-        { "label": "Oceanic Crossing Checklist","href": "docs/Oceanic%20Crossing%20Checklist.pdf" },
-        { "label": "RNAV RNP",                 "href": "docs/RNAV%20RNP.pdf" },
-        { "label": "ICAO HF Networks",         "href": "docs/ICAO%20HF%20Networks.pdf" },
-        { "label": "China RVSM",               "href": "docs/China%20RVSM.pdf" },
-        { "label": "TFS Canada Procedures",    "href": "docs/TFS%20Canada%20Procedures.pdf" },
-        { "label": "Overflight Exempt",        "href": "docs/TFS%20Overflight%20Exempt.pdf" },
-        { "label": "ATC Zero / TIBA",          "href": "docs/ATC%200%20TIBA%20.pdf" }
+        { "label": "Oceanic Crossing Checklist", "href": "docs/Oceanic Crossing Checklist.pdf", "tags": ["International"] },
+        { "label": "NAT Comm Issues",            "href": "docs/NAT Comm Issues.pdf",           "tags": ["International"] },
+        { "label": "RNAV RNP",                   "href": "docs/RNAV RNP.pdf",                   "tags": ["International"] }
       ]
     },
     {
-      "title": "Misc",
+      "title": "Admin & Misc",
+      "tags": ["Admin", "Misc"],
       "items": [
-        { "label": "CDFA",                     "href": "docs/CDFA.pdf" },
-        { "label": "Descend VIA",              "href": "docs/Descend%20VIA.pdf" },
-        { "label": "Short Flight Segment",     "href": "docs/Short%20Flight%20Segment.pdf" }
+        { "label": "TFS ERP",            "href": "docs/TFS ERP.pdf",            "tags": ["Admin"] },
+        { "label": "TFS Contacts",       "href": "docs/TFS Contacts.pdf",       "tags": ["Admin", "Misc"] },
+        { "label": "Expense Cheat Sheet","href": "docs/Expense Cheat Sheet.pdf","tags": ["Admin"] },
+        { "label": "Short Flight Segment","href": "docs/Short Flight Segment.pdf","tags": ["Misc"] }
       ]
     }
   ]
