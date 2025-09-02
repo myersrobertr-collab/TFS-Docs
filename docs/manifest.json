@@ -1,8 +1,10 @@
 
 {
-  "version": "2025-09-01-a",
-  "tagMeta": ["G600", "G280", "Manuals", "Admin", "Misc", "International"],
-  "sections": [
+  "version": "2025.9.10",
+  "tagMeta": [ "G600", "G280", "Manuals", "Admin", "Misc", "International" ],
+  "sections": [ ... ]
+}
+
     {
       "title": "G600",
       "tags": ["G600"],
