@@ -1,205 +1,204 @@
-// ========== Config ==========
-const APP_VERSION  = (window.APP_VERSION  || "dev").toString();
-const MANIFEST_URL = (window.MANIFEST_URL || "docs/manifest.json").toString();
-const CACHE_NAME   = "tfs-docs-" + APP_VERSION;
+/* TFS Docs app shell — compact UI, EMER styling, offline with progress */
 
-// ========== State ==========
+const APP_VERSION   = window.APP_VERSION  || 'dev';
+const MANIFEST_URL  = window.MANIFEST_URL || 'docs/manifest.json';
+const CACHE_NAME    = window.CACHE_NAME   || ('tfs-docs-' + APP_VERSION);
+
 let TAGS = [];             // from manifest.tagMeta
 let DOCS = [];             // from manifest.sections
-let selectedTag = localStorage.getItem("tfs.selectedTag") || "All";
+let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
 
-// ========== DOM helpers ==========
-const $  = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
 
-function toast(msg, ms = 2600){
-  const host = $("#toast");
-  if (!host) return;
-  const el = document.createElement("div");
-  el.className = "toast";
-  el.textContent = msg;
-  host.appendChild(el);
-  setTimeout(()=>{ el.remove(); }, ms);
-}
+/* ---------- Render: tag chips ---------- */
+function renderTagBar() {
+  const host = $('#tagBar');
+  host.innerHTML = '';
+  const tags = ['All', ...TAGS];
 
-// ========== SW registration ==========
-async function registerSW(){
-  if (!("serviceWorker" in navigator)) return;
-  try {
-    await navigator.serviceWorker.register("sw.js?v=" + encodeURIComponent(APP_VERSION));
-  } catch (e) {
-    // silent
-  }
-}
-
-// ========== Render tag chips ==========
-function renderTagBar(){
-  const bar = $("#tagbar");
-  if (!bar) return;
-  bar.innerHTML = "";
-
-  const allTags = ["All", ...TAGS];
-  allTags.forEach(tag => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip" + (selectedTag === tag ? " active" : "");
-    chip.textContent = tag;
-    chip.addEventListener("click", () => {
+  tags.forEach(tag => {
+    const isEmer = tag.toLowerCase() === 'emer';
+    const btn = document.createElement('button');
+    btn.className = ['chip', isEmer ? 'emer' : '', (tag === selectedTag ? 'active' : '')].join(' ').trim();
+    btn.textContent = tag;
+    btn.addEventListener('click', () => {
       selectedTag = tag;
-      localStorage.setItem("tfs.selectedTag", selectedTag);
+      localStorage.setItem('tfs.selectedTag', selectedTag);
       renderTagBar();
       renderSections(DOCS);
     });
-    bar.appendChild(chip);
+    host.appendChild(btn);
   });
 }
 
-// ========== Render sections/cards ==========
-function renderSections(sections){
-  const host = $("#sections");
-  if (!host) return;
-  host.innerHTML = "";
+/* ---------- Render: sections & cards ---------- */
+function renderSections(sections) {
+  const host = $('#sections');
+  host.innerHTML = '';
 
-  const showAll = selectedTag === "All";
+  const sel = selectedTag.toLowerCase();
+  const showAll = selectedTag === 'All';
 
-  sections.forEach(sec => {
-    const secTags = Array.isArray(sec.tags) ? sec.tags : [];
-    const shouldShowSection = showAll || secTags.includes(selectedTag);
-    if (!shouldShowSection) return;
+  (sections || []).forEach(sec => {
+    // include section if it has at least one matching item
+    const items = (sec.items || []).filter(it => {
+      if (showAll) return true;
+      const itemTags = (it.tags || []).map(x => String(x).toLowerCase());
+      const secTags  = (sec.tags || []).map(x => String(x).toLowerCase());
+      return itemTags.includes(sel) || secTags.includes(sel);
+    });
 
-    const secEl = document.createElement("div");
-    secEl.className = "section" + (secTags.includes("EMER") ? " emer" : "");
-    secEl.innerHTML = `<h2>${sec.title || ""}</h2>`;
+    if (!items.length) return;
 
-    const grid = document.createElement("div");
-    grid.className = "grid";
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'section';
 
-    (sec.items || []).forEach(it => {
-      // only show items that match the selected tag (if not "All")
-      const itTags = Array.isArray(it.tags) ? it.tags : [];
-      if (!showAll && !(itTags.includes(selectedTag))) return;
+    const head = document.createElement('div');
+    head.className = 'sectionHead';
+    head.innerHTML = `<h2>${sec.title || ''}</h2>`;
+    sectionEl.appendChild(head);
 
-      const danger = secTags.includes("EMER") || itTags.includes("EMER");
+    const grid = document.createElement('div');
+    grid.className = 'grid';
 
-      const card = document.createElement("div");
-      card.className = "card" + (danger ? " emer" : "");
-      card.innerHTML = `
-        <div class="desc">${it.desc ? String(it.desc) : "&nbsp;"}</div>
-        <a class="btn ${danger ? "danger" : ""}" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
-      `;
+    const isEmerSection = (sec.tags || []).map(t => String(t).toLowerCase()).includes('emer');
+
+    items.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'card' + (isEmerSection ? ' emer' : '');
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btnRow';
+
+      // one card per item with a single button
+      const a = document.createElement('a');
+      a.className = 'docBtn small' + (isEmerSection ? ' emer' : '');
+      a.href = it.href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = it.label || 'Open';
+      btnRow.appendChild(a);
+
+      card.appendChild(btnRow);
       grid.appendChild(card);
     });
 
-    // if no items remained after item-tag filtering, skip section entirely
-    if (!grid.children.length) return;
-
-    secEl.appendChild(grid);
-    host.appendChild(secEl);
+    sectionEl.appendChild(grid);
+    host.appendChild(sectionEl);
   });
 }
 
-// ========== Offline prefetch with progress ==========
-async function downloadForOffline(){
-  const overlay = $("#dlOverlay");
-  const fill    = $("#dlFill");
-  const count   = $("#dlCount");
-  const pct     = $("#dlPct");
+/* ---------- Offline prefetch with progress ---------- */
+async function cacheUrlsWithProgress(urls) {
+  const statusArea = $('#statusArea');
+  const statusText = $('#statusText');
+  const bar = $('#progressBar');
 
-  function setProg(done, total){
-    const p = total ? Math.round((done/total) * 100) : 0;
-    fill.style.width = p + "%";
-    count.textContent = `${done} / ${total}`;
-    pct.textContent = `${p}%`;
-  }
+  statusArea.style.display = '';
+  statusText.textContent = 'Preparing download…';
+  bar.style.width = '0%';
 
-  overlay.hidden = false;
-  setProg(0, 0);
-
-  const urls = new Set([
-    "./",
-    "index.html?v=" + encodeURIComponent(APP_VERSION),
-    "app.js?v=" + encodeURIComponent(APP_VERSION),
-    "sw.js?v=" + encodeURIComponent(APP_VERSION),
-    "app.webmanifest?v=" + encodeURIComponent(APP_VERSION),
-  ]);
-
-  // add all document URLs (with cache bust)
-  DOCS.forEach(s => (s.items || []).forEach(i => {
-    if (i.href) urls.add(`${i.href}?v=${encodeURIComponent(APP_VERSION)}`);
-  }));
-
-  const list = Array.from(urls);
-  setProg(0, list.length);
-
-  if (!("caches" in window)) {
-    overlay.hidden = true;
-    toast("This browser doesn't support offline caching.");
-    return;
-  }
-
+  const cache = await caches.open(CACHE_NAME);
   let done = 0;
-  try {
-    const cache = await caches.open(CACHE_NAME);
-    for (const url of list) {
-      try {
-        // Use 'reload' to bypass HTTP cache, fall back to normal if needed
-        const res = await fetch(url, { cache: "reload" });
-        if (res.ok) await cache.put(url, res.clone());
-      } catch (_) { /* continue */ }
-      done++;
-      setProg(done, list.length);
-      // allow UI to paint
-      await new Promise(r => setTimeout(r, 10));
+
+  // Helper to update bar
+  const update = () => {
+    const pct = Math.round((done / urls.length) * 100);
+    bar.style.width = pct + '%';
+    statusText.textContent = `Caching ${done}/${urls.length}…`;
+  };
+
+  // Fetch each URL individually for progress reporting
+  for (const u of urls) {
+    try {
+      const url = new URL(u, location.href).toString();
+      const res = await fetch(url, { cache: 'no-cache', mode: 'same-origin' });
+      if (res.ok) await cache.put(url, res.clone());
+    } catch (e) {
+      console.warn('Cache miss:', u, e);
     }
-    toast("Documents cached for offline use 👍");
-  } catch (e) {
-    console.error(e);
-    toast("Could not cache all documents. Try again later.");
-  } finally {
-    setTimeout(() => { overlay.hidden = true; }, 400);
+    done += 1;
+    update();
   }
+
+  statusText.textContent = 'All documents cached for offline use ✅';
+  setTimeout(() => { statusArea.style.display = 'none'; }, 1500);
 }
 
-// ========== Manifest loader ==========
-async function loadDocs(){
+function collectCacheList() {
+  const core = [
+    './',
+    'index.html',
+    `app.js?v=${encodeURIComponent(APP_VERSION)}`,
+    'app.webmanifest',
+    'sw.js'
+  ];
+  const docUrls = DOCS.flatMap(s => (s.items || []).map(i => i.href));
+  // de-dup
+  return Array.from(new Set([...core, ...docUrls]));
+}
+
+/* ---------- Manifest loader ---------- */
+async function loadDocs() {
   try {
-    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache: "no-cache" });
-    if (!r.ok) throw new Error("manifest missing");
+    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('manifest missing');
     const m = await r.json();
 
     TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
     DOCS = Array.isArray(m.sections) ? m.sections : [];
 
-    // version badge
-    const ver = (m.version || APP_VERSION || "").toString();
-    const chip = $("#verChip");
-    if (chip && ver) chip.textContent = "v" + ver;
+    // show manifest version in badge
+    $('#manifestVersion').textContent = 'Docs v' + (m.version || '—');
 
-    // show "new files" toast if manifest version changed
-    const prev = localStorage.getItem("tfs.manifestVersion");
+    // show update banner if version changed
+    const prev = localStorage.getItem('tfs.manifestVersion');
     if (m.version && prev && prev !== m.version) {
-      toast("New/updated documents are available.");
+      $('#updateBanner').classList.add('show');
     }
-    if (m.version) localStorage.setItem("tfs.manifestVersion", m.version);
-
+    if (m.version) localStorage.setItem('tfs.manifestVersion', m.version);
   } catch (e) {
-    console.warn("Manifest load failed, using fallback", e);
+    console.warn('Manifest load failed, using fallback', e);
     TAGS = [];
-    DOCS = [{ title: "MISC", tags:["Misc"], items: [] }];
+    DOCS = [{ title: 'MISC', tags: ['Misc'], items: [] }];
+    $('#manifestVersion').textContent = 'Docs v—';
   }
 
   renderTagBar();
   renderSections(DOCS);
 }
 
-// ========== Wire UI ==========
-function wireUI(){
-  $("#offlineBtn")?.addEventListener("click", downloadForOffline);
+/* ---------- Service worker (optional but helpful) ---------- */
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.register('sw.js');
+  } catch (e) {
+    console.warn('SW registration failed', e);
+  }
 }
 
-// ========== Boot ==========
-(async function boot(){
+/* ---------- Events ---------- */
+function wireEvents() {
+  // offline button
+  $('#offlineBtn')?.addEventListener('click', async () => {
+    const urls = collectCacheList();
+    await cacheUrlsWithProgress(urls);
+  });
+
+  // update banner reload
+  $('#reloadBtn')?.addEventListener('click', () => {
+    // Nuke this app cache only; SW (if present) will also help
+    caches.delete(CACHE_NAME).finally(() => {
+      location.reload();
+    });
+  });
+}
+
+/* ---------- Boot ---------- */
+(async function init(){
+  wireEvents();
   await registerSW();
-  wireUI();
   await loadDocs();
 })();
