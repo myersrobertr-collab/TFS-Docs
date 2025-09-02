@@ -1,240 +1,283 @@
-// ---------- Config ----------
-const APP_VERSION  = window.APP_VERSION || 'dev';
-const MANIFEST_URL = window.MANIFEST_URL || 'docs/manifest.json';
-const CACHE_NAME   = window.CACHE_NAME   || ('tfs-docs-' + APP_VERSION);
-const STALE_MS     = 14 * 24 * 60 * 60 * 1000; // 14 days
+/* TFS Documents – app shell logic
+   - Renders tag filter chips
+   - Renders sections/cards
+   - Handles prefetch w/ progress
+   - Adds “glow” selection on tag chips and outlined/glowing count chips
+*/
 
-// ---------- DOM ----------
-const elSections   = document.getElementById('sections');
-const elChips      = document.getElementById('chips');
-const elOfflineBtn = document.getElementById('offlineBtn');
-const elManVer     = document.getElementById('manifestVer');
-const elLastCache  = document.getElementById('lastCache');
-
-const progWrap  = document.getElementById('progressWrap');
-const progTrack = document.getElementById('progressTrack');
-const progBar   = document.getElementById('progressBar');
-const progText  = document.getElementById('progressText');
-
-// ---------- State ----------
-let DOCS = [];
-let TAGS = [];
-let selectedTag = localStorage.getItem('tfs.selectedTag') || 'All';
-let manifestVersion = null;
-
-// ---------- Utilities ----------
-const fmtDate = ts => {
-  if (!ts) return '—';
-  const d = new Date(Number(ts));
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const STATE = {
+  manifestVersion: null,
+  sections: [],
+  tags: [],
+  activeTag: 'ALL',
+  lastDownloadedAt: null,
 };
 
-function updateLastCacheLabel() {
-  const last = localStorage.getItem('tfs.lastPrefetchAt');
-  elLastCache.textContent = `Last downloaded: ${fmtDate(last)}`;
-}
+const els = {
+  meta:          () => document.getElementById('meta'),
+  tagChips:      () => document.getElementById('tagChips'),
+  sections:      () => document.getElementById('sections'),
+  btnDownload:   () => document.getElementById('btnDownload'),
+  btnRemove:     () => document.getElementById('btnRemove'),
+  progressWrap:  () => document.getElementById('progressWrap'),
+  progressBar:   () => document.getElementById('progressBar'),
+  progressLabel: () => document.getElementById('progressLabel'),
+};
 
-function needsYellow() {
-  const last = Number(localStorage.getItem('tfs.lastPrefetchAt') || 0);
-  const tooOld = Date.now() - last > STALE_MS;
-  const prevVer = localStorage.getItem('tfs.manifestVersion');
-  const newer = !!(manifestVersion && prevVer && prevVer !== manifestVersion);
-  return tooOld || newer;
-}
+const EMER_KEY = 'EMER';
+const STORAGE_KEY = 'tfs-docs:lastDownloadedAt';
+const STALE_DAYS = 14;
 
-function setOfflineBtnState() {
-  if (!elOfflineBtn) return;
-  if (needsYellow()) {
-    elOfflineBtn.classList.add('btn-warn');
-    elOfflineBtn.title = 'New/updated docs available or cache is older than 14 days';
-  } else {
-    elOfflineBtn.classList.remove('btn-warn');
-    elOfflineBtn.title = '';
-  }
-}
-
-function setProgress(pct) {
-  progWrap.style.display = 'block';
-  progBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-  progText.textContent = `${Math.round(pct)}%`;
-  if (pct >= 100) {
-    setTimeout(() => { progWrap.style.display = 'none'; }, 600);
-  }
-}
-
-// ---------- Render ----------
-function renderTagBar() {
-  if (!elChips) return;
-  const tags = ['All', ...TAGS];
-  elChips.innerHTML = tags.map(tag => {
-    const emer = tag.toLowerCase() === 'emer' ? ' style="background:#e4002b;border-color:#e4002b;color:#fff"' : '';
-    const active = tag === selectedTag ? ' data-active="1"' : '';
-    return `<button class="tagbtn"${emer}${active ? ' aria-current="true"' : ''} data-tag="${tag}">${tag}</button>`;
-  }).join('');
-
-  elChips.querySelectorAll('.tagbtn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedTag = btn.dataset.tag;
-      localStorage.setItem('tfs.selectedTag', selectedTag);
-      renderSections(DOCS);
-      // update active state
-      elChips.querySelectorAll('.tagbtn').forEach(b => b.removeAttribute('aria-current'));
-      btn.setAttribute('aria-current', 'true');
-    });
-  });
-}
-
-function renderSections(sections) {
-  const pass = s => selectedTag === 'All' ||
-    (Array.isArray(s.tags) && s.tags.includes(selectedTag));
-
-  const chunks = sections.filter(pass).map(sec => {
-    const count = (sec.items || []).length;
-    const htmlItems = (sec.items || []).map(it => {
-      const emerClass = (it.tags || []).some(t => t.toLowerCase() === 'emer') ? ' emer' : '';
-      return `
-        <div class="card">
-          <a class="btn${emerClass}" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="section">
-        <h2>${sec.title} <span class="count">(${count})</span></h2>
-        <div class="grid">
-          ${htmlItems}
-        </div>
-      </div>
-    `;
-  });
-
-  elSections.innerHTML = chunks.join('') || `<div class="muted">No documents for this filter.</div>`;
-}
-
-// ---------- Manifest loading ----------
-async function loadDocs() {
+async function init() {
   try {
-    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}&t=${Date.now()}`, { cache: 'no-cache' });
-    if (!r.ok) throw new Error('manifest missing');
-    const m = await r.json();
+    const res = await fetch(window.MANIFEST_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`Failed to load manifest: ${res.status}`);
+    const data = await res.json();
 
-    TAGS = Array.isArray(m.tagMeta) ? m.tagMeta : [];
-    DOCS = Array.isArray(m.sections) ? m.sections : [];
-    manifestVersion = m.version || null;
+    // Expected structure:
+    // { version: "2025.9.51", sections: [{ title, tag, count?, items: [{ label, url, tags?:[] }] }], tags?: ["G600","G280","EMER",...] }
+    STATE.manifestVersion = data.version || '—';
+    STATE.sections = normalizeSections(data.sections || []);
+    STATE.tags     = Array.from(new Set(['ALL', ...collectTags(STATE.sections)]));
 
-    // UI bits
-    if (elManVer) elManVer.textContent = manifestVersion ? `v${manifestVersion}` : 'v—';
+    STATE.lastDownloadedAt = +(localStorage.getItem(STORAGE_KEY) || 0);
 
-    // If current selectedTag no longer exists, fall back to All
-    if (selectedTag !== 'All' && !TAGS.includes(selectedTag)) {
-      selectedTag = 'All';
-      localStorage.setItem('tfs.selectedTag', selectedTag);
-    }
-
-    renderTagBar();
-    renderSections(DOCS);
-
-    // Compare manifest version to highlight yellow state if needed
-    setOfflineBtnState();
-  } catch (e) {
-    console.warn('Manifest load failed:', e);
-    TAGS = [];
-    DOCS = [{ title: 'MISC', items: [] }];
-    renderTagBar();
-    renderSections(DOCS);
+    renderMeta();
+    renderTagChips();
+    renderSections();
+    wireButtons();
+    reflectCacheFreshness();
+  } catch (err) {
+    console.error(err);
+    els.meta().textContent = 'Failed to load docs manifest.';
   }
 }
 
-// ---------- Offline prefetch ----------
-async function prefetchAll() {
-  // Collect URLs (shell + docs)
-  const urls = new Set([
-    './',
-    'index.html',
-    'app.webmanifest',
-    'sw.js'
-  ]);
-  DOCS.forEach(sec => (sec.items || []).forEach(it => urls.add(it.href)));
+function normalizeSections(sections) {
+  // Ensure each item has tags array and section count
+  return sections.map(s => {
+    const items = (s.items || []).map(it => ({
+      ...it,
+      tags: Array.isArray(it.tags) ? it.tags : (it.tag ? [it.tag] : (s.tag ? [s.tag] : []))
+    }));
+    const tag = s.tag || null;
+    const count = items.length;
+    return { ...s, items, tag, count };
+  });
+}
 
-  const list = Array.from(urls);
+function collectTags(sections) {
+  const set = new Set();
+  sections.forEach(s => {
+    if (s.tag) set.add(s.tag);
+    (s.items || []).forEach(it => (it.tags || []).forEach(t => set.add(t)));
+  });
+  // Keep EMER near front if present
+  return [...set].sort((a, b) => {
+    if (a === EMER_KEY) return -1;
+    if (b === EMER_KEY) return 1;
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
+}
+
+function renderMeta() {
+  const dt = STATE.lastDownloadedAt ? new Date(STATE.lastDownloadedAt) : null;
+  const stale = isStale(STATE.lastDownloadedAt);
+  const staleBadge = stale ? ' • cache is getting old' : '';
+  els.meta().innerHTML = `App ${sanitize(window.APP_VERSION)} · Docs ${sanitize(STATE.manifestVersion)}${stale ? ' · <span class="badge badge--warn">Update recommended</span>' : ''}${staleBadge}`;
+}
+
+function renderTagChips() {
+  const row = els.tagChips();
+  row.innerHTML = '';
+  STATE.tags.forEach(tag => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.role = 'tab';
+    chip.className = 'chip' + (tag === EMER_KEY ? ' chip--emer' : '');
+    chip.dataset.tag = tag;
+    chip.ariaPressed = (STATE.activeTag === tag ? 'true' : 'false');
+    chip.textContent = tag;
+    if (STATE.activeTag === tag) chip.classList.add('chip--active'); // glow when selected
+    chip.addEventListener('click', () => {
+      STATE.activeTag = tag;
+      // Update all chips selected state (glow)
+      document.querySelectorAll('.chip[role="tab"]').forEach(el => {
+        const isActive = el.dataset.tag === STATE.activeTag;
+        el.classList.toggle('chip--active', isActive);
+        el.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+      renderSections();
+    });
+    row.appendChild(chip);
+  });
+}
+
+function renderSections() {
+  const mount = els.sections();
+  mount.innerHTML = '';
+
+  // filter sections/items by activeTag
+  const tag = STATE.activeTag;
+  const isAll = tag === 'ALL';
+
+  STATE.sections.forEach(section => {
+    // Count visible items under current filter
+    const visibleItems = section.items.filter(it => isAll || (it.tags || []).includes(tag));
+    if (!visibleItems.length) return;
+
+    const sec = document.createElement('section');
+    sec.className = 'section';
+
+    const head = document.createElement('div');
+    head.className = 'section-head';
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'section-title';
+    titleWrap.textContent = section.title || section.tag || 'Section';
+
+    // Make a count chip that is outlined + faint glow
+    const countChip = document.createElement('span');
+    countChip.className = 'chip chip--count';
+    countChip.textContent = `${section.tag || section.title || 'Group'} (${visibleItems.length})`;
+
+    head.appendChild(titleWrap);
+    head.appendChild(countChip);
+
+    const body = document.createElement('div');
+    body.className = 'section-body';
+
+    const grid = document.createElement('div');
+    grid.className = 'doc-grid';
+
+    visibleItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'doc-card';
+
+      const title = document.createElement('div');
+      title.className = 'doc-title';
+      title.textContent = item.label || item.name || 'Document';
+
+      const meta = document.createElement('div');
+      meta.className = 'doc-meta';
+      meta.textContent = (item.tags && item.tags.length) ? item.tags.join(' · ') : (section.tag ? section.tag : '');
+
+      const a = document.createElement('a');
+      a.className = 'link' + ((item.tags || []).includes(EMER_KEY) ? ' danger' : '');
+      a.href = item.url || '#';
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Open';
+
+      card.appendChild(title);
+      card.appendChild(meta);
+      card.appendChild(a);
+      grid.appendChild(card);
+    });
+
+    body.appendChild(grid);
+    sec.appendChild(head);
+    sec.appendChild(body);
+    mount.appendChild(sec);
+  });
+}
+
+function wireButtons() {
+  els.btnDownload().addEventListener('click', prefetchAll);
+  els.btnRemove().addEventListener('click', clearAllCachesHard);
+}
+
+async function prefetchAll() {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg || !navigator.serviceWorker.controller) {
+    // Ensure SW is active before prefetch
+    await navigator.serviceWorker.register('sw.js');
+  }
+
+  const urls = collectAllUrls();
+  if (!urls.length) return;
+
+  showProgress(true);
   let done = 0;
 
-  try {
-    const cache = await caches.open(CACHE_NAME);
-
-    // Fetch sequentially to show progress reliably
-    for (const url of list) {
-      try {
-        const res = await fetch(url, { cache: 'reload' });
-        if (res.ok) await cache.put(new Request(url), res.clone());
-      } catch {
-        // ignore single-file failures; keep going
-      } finally {
-        done += 1;
-        setProgress((done / list.length) * 100);
-      }
+  const cache = await caches.open(window.CACHE_NAME);
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (res.ok) await cache.put(new Request(url), res.clone());
+    } catch (e) {
+      console.warn('Prefetch failed for', url);
+    } finally {
+      done++;
+      const pct = Math.round((done / urls.length) * 100);
+      updateProgress(pct);
     }
+  }
 
-    // Mark timestamps + version and update UI
-    localStorage.setItem('tfs.lastPrefetchAt', String(Date.now()));
-    if (manifestVersion) localStorage.setItem('tfs.manifestVersion', manifestVersion);
-    updateLastCacheLabel();
-    setOfflineBtnState();
-    alert('Offline files updated 👍');
-  } catch (e) {
-    console.error(e);
-    alert('Could not cache all files. Try again with good connectivity.');
-  } finally {
-    setTimeout(() => { progWrap.style.display = 'none'; }, 800);
+  STATE.lastDownloadedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, String(STATE.lastDownloadedAt));
+  renderMeta();
+  reflectCacheFreshness();
+  showProgress(false);
+}
+
+function collectAllUrls() {
+  const urls = new Set();
+  STATE.sections.forEach(s => (s.items || []).forEach(it => { if (it.url) urls.add(it.url); }));
+  // also cache the manifest & app shell
+  urls.add(window.MANIFEST_URL);
+  urls.add('index.html'); urls.add('app.js'); urls.add('sw.js');
+  return Array.from(urls);
+}
+
+function showProgress(show) {
+  els.progressWrap().style.display = show ? 'flex' : 'none';
+  els.progressWrap().setAttribute('aria-hidden', show ? 'false' : 'true');
+  if (!show) updateProgress(0);
+}
+function updateProgress(pct) {
+  els.progressBar().style.width = `${pct}%`;
+  els.progressLabel().textContent = `${pct}%`;
+}
+
+function clearAllCachesHard() {
+  // Unregister SWs + clear caches
+  Promise.all([
+    navigator.serviceWorker?.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+  ]).then(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  });
+}
+
+function reflectCacheFreshness() {
+  const stale = isStale(STATE.lastDownloadedAt) || versionMismatch();
+  const btn = els.btnDownload();
+  if (stale) {
+    btn.classList.add('badge', 'badge--warn');
+    btn.textContent = 'Download Docs (Update Available)';
+  } else {
+    btn.classList.remove('badge', 'badge--warn');
+    btn.textContent = 'Download Docs';
   }
 }
 
-// ---------- Hard refresh ----------
-async function hardRefresh() {
-  try {
-    // 1) Delete app + workbox/runtime caches
-    if ('caches' in window) {
-      const names = await caches.keys();
-      const toDelete = names.filter(n => /^tfs-docs-/i.test(n) || /workbox|runtime|pdf/i.test(n));
-      await Promise.all(toDelete.map(n => caches.delete(n)));
-    }
-
-    // 2) Unregister all SWs
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.unregister()));
-    }
-
-    // 3) Clear app markers
-    ['tfs.lastPrefetchAt','tfs.manifestVersion','tfs.selectedTag','tfs.cachedUrlsV2']
-      .forEach(k => { try { localStorage.removeItem(k); } catch {} });
-
-    // 4) Reload with cache-bust
-    const url = new URL(window.location.href);
-    url.searchParams.set('fresh', Date.now().toString());
-    window.location.replace(url.toString());
-  } catch (e) {
-    console.error(e);
-    alert('Could not clear caches. Close all tabs and try again.');
-  }
+function isStale(ts) {
+  if (!ts) return true;
+  const ageDays = (Date.now() - ts) / (1000*60*60*24);
+  return ageDays > STALE_DAYS;
+}
+function versionMismatch() {
+  // If manifest version changed after last download, we consider it stale
+  // (This is a heuristic; in practice, re-download when user clicks)
+  return false; // left simple; server-side can nudge SW_VERSION or manifest version
 }
 
-// ---------- Events ----------
-elOfflineBtn?.addEventListener('click', () => {
-  const msg = 'This will (re)download all files for offline use. Continue?';
-  if (confirm(msg)) prefetchAll();
-});
+// tiny sanitizer for UI text
+function sanitize(s) {
+  return String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+}
 
-document.getElementById('forceRefreshBtn')?.addEventListener('click', async () => {
-  const ok = confirm(
-    'This will delete all downloaded files and reload the app.\nYou can re-download offline files afterwards.\n\nProceed?'
-  );
-  if (!ok) return;
-  await hardRefresh();
-});
-
-// ---------- Init ----------
-updateLastCacheLabel();
-loadDocs();
-setOfflineBtnState(); // initial state based on whatever is stored
+init();
