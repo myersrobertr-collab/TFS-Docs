@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TFS Docs</title>
-  <link rel="manifest" href="app.webmanifest" />
+  <title>TFS Documents</title>
+  <link rel="manifest" href="app.webmanifest?v=2025.09.01-4" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
     :root {
@@ -12,78 +12,60 @@
       --btn:#1f2937; --btnText:#f9fafb; --ring:#334155;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
     .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     h1{font-size:22px;margin:8px 0}
     .tag{font-size:12px;color:#cbd5e1}
-    .bar{margin:12px 0 20px;border-top:1px solid #1f2937}
+    .bar{margin:12px 0 16px;border-top:1px solid #1f2937}
+
     .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .controls input[type="search"]{
       background:#0f172a;color:var(--text);border:1px solid #243041;border-radius:12px;padding:10px 12px;min-width:200px;outline:none
     }
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+    .chip{
+      background:#0f172a;color:#e5e7eb;border:1px solid #243041;border-radius:999px;
+      padding:.35rem .75rem;font-weight:700;font-size:.9rem;cursor:pointer;user-select:none
+    }
+    .chip.active{background:var(--accent2);border-color:var(--accent2)}
+
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
     .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
     @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .section{margin:18px 0}
-    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
-    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .desc{min-height:32px;color:var(--muted);font-size:13px}
+    .tags{display:flex;gap:6px;flex-wrap:wrap}
+    .tagpill{font-size:11px;color:#e5e7eb;background:#0f172a;border:1px solid #243041;border-radius:999px;padding:.15rem .5rem}
     .btn{
       display:block;width:100%;text-align:center;background:var(--btn);color:var(--btnText);
       border:1px solid #273244;border-radius:12px;padding:12px 14px;font-weight:700;text-decoration:none
     }
     .btn:hover{filter:brightness(1.06)}
     .primary{background:var(--accent2);border-color:var(--accent2)}
-    .muted{color:var(--muted);font-size:13px}
 
-    /* Install banner + update toast */
-    .banner, .toast {
-      position:sticky; top:0; z-index:9999;
-      background:#0b1220; color:#e5e7eb;
-      padding:.65rem .9rem; border:1px solid #1f2937; border-radius:12px;
-      display:flex; align-items:center; gap:.6rem; justify-content:space-between;
-      margin-bottom:10px;
-    }
-    .banner button, .toast button {
-      background:#111827; color:#fff; border:0; border-radius:10px;
-      padding:.45rem .75rem; font-weight:600;
-    }
-    .toast { background:#091423; border-color:#1e2b40; }
+    /* center ribbons text */
+    div[data-testid="stAlert"] p, .center { text-align:center; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- Install banner placeholder -->
-    <div id="installBanner" style="display:none" class="banner">
-      <div>
-        <strong>Add to Home Screen</strong><br />
-        <small id="installHint">Open in Safari → Share → <em>Add to Home Screen</em> for offline access.</small>
-      </div>
-      <div style="display:flex;gap:.5rem">
-        <button id="installAction" style="display:none">Install</button>
-        <button id="installDismiss">Got it</button>
-      </div>
-    </div>
-
-    <!-- Update toast placeholder -->
-    <div id="updateToast" style="display:none" class="toast">
-      <div><strong>New docs available</strong> — update to refresh the offline cache.</div>
-      <div style="display:flex;gap:.5rem">
-        <button id="doUpdate" class="primary" style="background:#E4002B;border:0">Update</button>
-        <button id="dismissUpdate">Dismiss</button>
-      </div>
-    </div>
-
     <header>
       <div>
         <h1>🗂️ TFS Documents</h1>
-    
+        <div class="tag">Works offline · Add/remove PDFs via <code>docs/manifest.json</code></div>
       </div>
       <div class="controls">
         <input id="q" type="search" placeholder="Search…" />
         <button id="offlineBtn" class="btn" style="width:auto;padding:.6rem .9rem">Download for offline</button>
       </div>
     </header>
+
+    <!-- Category chips -->
+    <div id="chips" class="chips"></div>
 
     <div class="bar"></div>
 
@@ -92,20 +74,57 @@
   </div>
 
   <script>
-    // --- tiny helpers ---
+    // ---------- Config ----------
+    const APP_VERSION = "2025.09.01-4";   // bump on deploy
+    const CATEGORIES = [
+      { id: "ALL", label: "All" },
+      { id: "G600", label: "G600 ✈️" },
+      { id: "G280", label: "G280 🛩️" },
+      { id: "Admin", label: "Admin 🗂️" },
+      { id: "Manuals", label: "Manuals 📘" },
+      { id: "International", label: "International 🌍" },
+      { id: "Misc", label: "Misc 🧩" },
+    ];
+    const MANIFEST_URL = "docs/manifest.json?v=" + APP_VERSION;
+
+    // ---------- State ----------
+    let DOCS = [];            // loaded from manifest
+    let ACTIVE_CAT = "ALL";   // chip filter
+
+    // ---------- Helpers ----------
     const $ = (s, r=document)=>r.querySelector(s);
     const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
-    // --- draw UI from DOCS ---
+    // ---------- UI: chips ----------
+    function renderChips() {
+      const host = $('#chips');
+      host.innerHTML = '';
+      CATEGORIES.forEach(cat => {
+        const el = document.createElement('div');
+        el.className = 'chip' + (cat.id === ACTIVE_CAT ? ' active' : '');
+        el.textContent = cat.label;
+        el.onclick = () => { ACTIVE_CAT = cat.id; renderSections(DOCS); };
+        host.appendChild(el);
+      });
+    }
+
+    // ---------- UI: sections + cards ----------
+    function itemVisibleByCat(item) {
+      if (ACTIVE_CAT === "ALL") return true;
+      const cats = (item.cats || []).map(String);
+      return cats.includes(ACTIVE_CAT);
+    }
+
     function renderSections(sections) {
       const q = ($('#q')?.value || '').trim().toLowerCase();
       const host = $('#sections');
       host.innerHTML = '';
 
       sections.forEach(sec => {
-        // filter by search
+        // filter items by search + category
         const items = (sec.items || []).filter(it =>
-          !q || it.label.toLowerCase().includes(q)
+          (!q || it.label.toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q))
+          && itemVisibleByCat(it)
         );
         if (!items.length) return;
 
@@ -119,9 +138,11 @@
         items.forEach(it => {
           const card = document.createElement('div');
           card.className = 'card';
+          const tagPills = (it.cats||[]).map(c => `<span class="tagpill">${c}</span>`).join(' ');
           card.innerHTML = `
-            <div style="min-height:32px;margin-bottom:10px" class="muted">${it.desc || '&nbsp;'}</div>
-            <a class="btn" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
+            <div class="desc">${it.desc ? it.desc : '&nbsp;'}</div>
+            <div class="tags">${tagPills}</div>
+            <a class="btn primary" href="${it.href}" target="_blank" rel="noopener">${it.label}</a>
           `;
           grid.appendChild(card);
         });
@@ -131,14 +152,14 @@
       });
     }
 
-    // --- offline prefetch + service worker registration ---
+    // ---------- Offline prefetch + SW ----------
     async function wireDownloadForOffline(sections) {
       if ('serviceWorker' in navigator) {
-        try { await navigator.serviceWorker.register('sw.js'); } catch (e) { /* ignore */ }
+        try { await navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).then(r => r.update?.()); } catch (e) {}
       }
-      const APP_VERSION = window.APP_VERSION || 'dev';
       const urls = new Set([
-        './','index.html','app.webmanifest','sw.js',
+        './', 'index.html?v='+APP_VERSION, 'app.webmanifest?v='+APP_VERSION, 'sw.js?v='+APP_VERSION,
+        MANIFEST_URL,
         ...sections.flatMap(s => (s.items||[]).map(i => i.href))
       ]);
       try {
@@ -147,120 +168,29 @@
         alert('Documents cached for offline use 👍');
       } catch (e) {
         console.error(e);
-        alert('Could not cache all documents. Try again after they finish uploading.');
+        alert('Could not cache all documents. Try again after the upload finishes or refresh once.');
       }
     }
 
-    // search live filtering
-    $('#q')?.addEventListener('input', () => renderSections(window.DOCS || []));
+    // events
+    $('#q')?.addEventListener('input', () => renderSections(DOCS));
+    $('#offlineBtn')?.addEventListener('click', () => wireDownloadForOffline(DOCS));
 
-    // click handler for offline button
-    $('#offlineBtn')?.addEventListener('click', () => wireDownloadForOffline(window.DOCS || []));
-
-    // =========================
-    // Install banner (iOS + Android)
-    // =========================
-    (function setupInstallBanner(){
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-      const banner = $('#installBanner');
-      const hint = $('#installHint');
-      const dismiss = $('#installDismiss');
-      const installBtn = $('#installAction');
-
-      let deferredPrompt = null;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        // Android / Chrome
-        e.preventDefault();
-        deferredPrompt = e;
-        installBtn.style.display = 'inline-block';
-        hint.textContent = 'Tap Install to add to your Home Screen for offline access.';
-        if (!isStandalone) banner.style.display = 'flex';
-      });
-
-      // iOS: show instructions if not installed
-      if (isIos && !isStandalone) {
-        installBtn.style.display = 'none';
-        hint.innerHTML = 'Open in Safari → Share → <em>Add to Home Screen</em> for offline access.';
-        banner.style.display = 'flex';
-      }
-
-      installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        try { await deferredPrompt.userChoice; } catch {}
-        deferredPrompt = null;
-        banner.style.display = 'none';
-      });
-
-      dismiss.addEventListener('click', () => banner.remove());
-    })();
-
-    // =========================
-    // Update toast (detect new docs and refresh caches)
-    // =========================
-    async function sha256Hex(str){
-      const enc = new TextEncoder().encode(str);
-      const buf = await crypto.subtle.digest('SHA-256', enc);
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    }
-
-    async function checkForDocUpdates(manifestJson){
-      // Hash the manifest content (or version field if you add one)
-      const signature = await sha256Hex(JSON.stringify(manifestJson));
-      const KEY = 'tfs-docs-manifest-hash';
-
-      const prev = localStorage.getItem(KEY);
-      if (prev && prev !== signature) {
-        // show toast
-        const toast = $('#updateToast');
-        const btnUpdate = $('#doUpdate');
-        const btnDismiss = $('#dismissUpdate');
-        toast.style.display = 'flex';
-
-        btnDismiss.onclick = () => toast.remove();
-        btnUpdate.onclick = async () => {
-          // clear old tfs-docs-* caches then prefetch the new set
-          const keys = await caches.keys();
-          await Promise.all(keys.filter(k => k.startsWith('tfs-docs-')).map(k => caches.delete(k)));
-          await wireDownloadForOffline(window.DOCS || []);
-          localStorage.setItem(KEY, signature);
-          toast.innerHTML = '<div><strong>Docs updated.</strong> You\'re on the latest set.</div>';
-          setTimeout(()=>toast.remove(), 2500);
-        };
-      } else if (!prev) {
-        // first run — remember current
-        localStorage.setItem(KEY, signature);
-      }
-    }
-  </script>
-
-  <!-- 🔻 loader script: fetch manifest, render, and run update check -->
-  <script>
-    const APP_VERSION = "2025.09.01-4";       // bump for cache busting of app shell
-    let DOCS = [];                            // filled from manifest
-    const MANIFEST_URL = "docs/manifest.json";
-
+    // ---------- Load manifest + boot ----------
     async function loadDocs() {
-      let manifest = { sections: [{ title: "MISC", items: [] }] };
       try {
         const r = await fetch(MANIFEST_URL, { cache: "no-cache" });
-        if (r.ok) manifest = await r.json();
-      } catch {}
-      DOCS = manifest.sections || [];
-      window.DOCS = DOCS; // expose to other scripts/handlers
+        if (!r.ok) throw new Error("manifest missing");
+        const m = await r.json();
+        DOCS = m.sections || [];
+      } catch {
+        DOCS = [{ title: "MISC", items: [] }];
+      }
+      renderChips();
       renderSections(DOCS);
-      // check if manifest changed (offer update)
-      try { await checkForDocUpdates(manifest); } catch {}
     }
 
-    // service worker (fire-and-forget)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
-    }
-
-    loadDocs(); // kick off
+    loadDocs();
   </script>
 </body>
 </html>
