@@ -11,105 +11,135 @@
 
   <!-- One place to bump the app shell version (cache-busting for HTML/JS/CSS) -->
   <script>
-    window.APP_VERSION  = "2025.9.23";
+    window.APP_VERSION  = "2025.9.24";
     window.MANIFEST_URL = "docs/manifest.json";
     window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
   </script>
 
   <style>
     :root{
-      --bg:#121826;        /* brighter dark */
-      --card:#172136;      /* card surface */
-      --text:#e7edf7;
-      --muted:#a5b4c7;
-      --line:#1f2a44;
-      --chip:#0e1a2f;
-      --chipText:#dbe7ff;
-      --accent:#2563eb;   /* primary */
-      --danger:#e11d48;   /* EMER red */
-      --danger-700:#b91c1c;
-    }
-    *{ box-sizing:border-box }
-    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text);
-               font-family: system-ui,-apple-system,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif; }
-    a{ color:inherit }
-
-    .wrap{ max-width:1100px; margin:0 auto; padding:18px 18px 32px; }
-
-    /* Banner */
-    header{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-    .title{ display:flex; align-items:center; gap:.6rem; }
-    .title h1{ font-size:20px; margin:0; }
-    .sub{ font-size:12px; color:var(--muted); }
-    .ver{ font-size:12px; color:#cfe1ff; background:#0e1a2f; border:1px solid var(--line);
-          padding:.15rem .45rem; border-radius:8px; }
-    .right{ display:flex; align-items:center; gap:10px; }
-
-    /* Offline button */
-    .btn{ display:inline-flex; align-items:center; gap:.5rem; cursor:pointer;
-          background:#1b2743; color:#f4f7ff; border:1px solid #253355;
-          padding:.55rem .85rem; border-radius:10px; font-weight:700; text-decoration:none; }
-    .btn:hover{ filter:brightness(1.05) }
-    .btn:disabled{ opacity:.6; cursor:not-allowed }
-
-    /* Chips */
-    .chips{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 10px; }
-    .chip{ background:var(--chip); color:var(--chipText); border:1px solid var(--line);
-           padding:.30rem .60rem; border-radius:999px; font-size:12px; cursor:pointer; user-select:none; }
-    .chip:hover{ filter:brightness(1.08) }
-    .chip.active{ background:var(--accent); color:#fff; border-color:var(--accent) }
-    .chip[data-tag="EMER"]{ background:#2b0e19; color:#ffdce4; border-color:#7a1027; }
-    .chip[data-tag="EMER"].active{ background:var(--danger); color:#fff; border-color:var(--danger-700) }
-
-    .bar{ border-top:1px solid var(--line); margin:10px 0 14px; }
-
-    /* Sections */
-    .section{ margin:20px 0 10px; }
-    .section h2{
-      display:flex; align-items:center; gap:.5rem;
-      font-size:15px; font-weight:700; color:#cfd8e6; margin:0 0 10px;
-    }
-    .section h2 .count{
-      font-size:12px; font-weight:600; letter-spacing:.2px;
-      background:#0b1220; color:#cbd5e1; padding:.15rem .5rem;
-      border:1px solid var(--line); border-radius:999px;
+      /* slightly brighter bg, keep good contrast */
+      --bg:#0f1724;
+      --card:#111827;
+      --muted:#9ca3af;
+      --text:#e5e7eb;
+      --accent:#2563eb;
+      --accent2:#e4002b; /* EMER */
+      --btn:#1f2937;
+      --btnText:#f9fafb;
+      --ring:#334155;
     }
 
-    .grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-    @media (max-width:1100px){ .grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-    @media (max-width:560px){  .grid{ grid-template-columns:1fr; } }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
 
-    .doc-card{
+    .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{font-size:22px;margin:8px 0}
+    .bar{margin:12px 0 20px;border-top:1px solid #1f2937}
+
+    /* grid + sections */
+    .section{margin:18px 0}
+    .section h2{font-size:16px;margin:0 0 10px;color:#cbd5e1}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:560px){.grid{grid-template-columns:1fr}}
+
+    .card{
       background:var(--card);
-      border:1px solid var(--line);
+      border:1px solid #1f2937;
       border-radius:14px;
-      padding:10px;
-      transition:transform .08s ease, box-shadow .08s ease;
-    }
-    .doc-card:hover{ transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.25); }
-
-    .doc-btn{
-      display:block; width:100%; text-align:center; text-decoration:none;
-      background:linear-gradient(180deg,#1f2f4e,#17243b);
-      color:#f8fafc; border:1px solid #2a3b5f; border-radius:10px;
-      padding:.55rem .9rem; font-weight:700;
-    }
-    .doc-btn:hover{ filter:brightness(1.06) }
-
-    /* EMER section theming */
-    .section.emer h2{ color:#ffe2e7; }
-    .section.emer h2 .count{ background:#3b0b16; border-color:#7a1027; color:#ffd5dc; }
-    .section.emer .doc-card{ border-color:#7a1027; background:#1d0c12; }
-    .section.emer .doc-btn{
-      background:linear-gradient(180deg,#ef4444,#dc2626);
-      border-color:var(--danger-700); color:#fff;
+      padding:14px;
     }
 
-    /* Progress bar */
-    #progressWrap{ display:none; align-items:center; gap:10px; margin:6px 0 0; }
-    #progressTrack{ width:240px; height:8px; border-radius:8px; background:#0e1a2f; border:1px solid var(--line); overflow:hidden; }
-    #progressBar{ height:100%; width:0; background:linear-gradient(90deg, var(--accent), #53a1ff); }
-    #progressText{ font-size:12px; color:var(--muted); }
+    /* doc buttons (20% less wide, centered) */
+    .btn{
+      display:block;
+      width:80%;
+      max-width:420px;                /* guard on huge screens */
+      margin:0 auto;
+      text-align:center;
+      color:var(--btnText);
+      text-decoration:none;
+      font-weight:700;
+      border-radius:12px;
+      border:1px solid #273244;
+      padding:12px 14px;
+
+      /* nicer shading */
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.10)),
+        var(--btn);
+      box-shadow: 0 6px 14px rgba(0,0,0,.18);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    /* keep full width on very small screens so taps are easy */
+    @media (max-width:420px){ .btn{width:100%;} }
+
+    .btn:hover{
+      filter:brightness(1.06);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(0,0,0,.22);
+    }
+
+    /* EMER buttons stay red + get same gradient */
+    .btn.emer{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.12)),
+        var(--accent2);
+      border-color: var(--accent2);
+      color:#fff;
+    }
+
+    /* squarer offline button in header (auto width, not 80%) */
+    .btn.btn-offline{
+      width:auto;
+      min-width:180px;
+      margin:0;
+      padding:.7rem 1rem;
+      border-radius:10px;
+    }
+
+    /* tag bar */
+    #chips, .tagbar{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}
+    .tagbtn{
+      background:#0f172a;color:#e2e8f0;border:1px solid #253246;
+      border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;
+      cursor:pointer;
+      transition: filter .12s ease, transform .12s ease;
+    }
+    .tagbtn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
+    .tagbtn.active{ background:#1d2a3f; border-color:#334b6b; }
+    .tagbtn.emer{ background:var(--accent2); border-color:var(--accent2); color:#fff; }
+
+    .ver{color:#94a3b8;font-size:12px}
+
+    /* progress bar */
+    #progressWrap{
+      display:none;                  /* shown while caching */
+      width:100%;
+      margin-top:8px;
+      gap:8px;
+      align-items:center;
+    }
+    #progressTrack{
+      position:relative;
+      flex:1;
+      height:10px;
+      background:#0f172a;
+      border:1px solid #253246;
+      border-radius:999px;
+      overflow:hidden;
+    }
+    #progressBar{
+      position:absolute;
+      top:0;left:0;height:100%;width:0%;
+      background:linear-gradient(90deg, #60a5fa, #3b82f6);
+    }
+    #progressText{
+      font-size:12px;color:#cbd5e1;min-width:38px;text-align:right;
+    }
   </style>
 </head>
 <body>
@@ -130,7 +160,7 @@
       </div>
     </header>
 
-    <div class="chips" id="chips"></div>
+    <div id="chips"></div>
     <div class="bar"></div>
 
     <!-- sections render here -->
