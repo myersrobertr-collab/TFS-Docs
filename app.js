@@ -38,17 +38,17 @@ async function init() {
     var data = await res.json();
 
     // Expected: { version, sections: [{ title, tags?:[], items: [{ label, href|url, tags?[] }] }] }
-    STATE.manifestVersion = data.version || '—';
+    STATE.manifestVersion = normalizeVersion(data.version);
     STATE.sections = normalizeSections(data.sections || []);
     STATE.tags = Array.from(new Set(['ALL'].concat(collectTags(STATE.sections))));
 
     STATE.lastDownloadedAt = +(localStorage.getItem(STORAGE_KEY) || 0);
 
-    renderMeta();
+    renderMeta();          // header text (now considers version mismatch)
     renderTagChips();
     renderSections();
     wireButtons();
-    reflectCacheFreshness();
+    reflectCacheFreshness(); // button state (also considers version mismatch)
   } catch (err) {
     console.error(err);
     els.meta().textContent = 'Failed to load docs manifest.';
@@ -95,9 +95,19 @@ function collectTags(sections) {
   });
 }
 
+function getUpdateFlags() {
+  var lastVersion = normalizeVersion(localStorage.getItem(STORAGE_VERSION_KEY));
+  var versionMismatch = !!(lastVersion && lastVersion !== STATE.manifestVersion);
+  var timeStale = isStale(STATE.lastDownloadedAt);
+  return { versionMismatch: versionMismatch, timeStale: timeStale, stale: (versionMismatch || timeStale) };
+}
+
 function renderMeta() {
-  var stale = isStale(STATE.lastDownloadedAt);
-  els.meta().innerHTML = 'App ' + sanitize(window.APP_VERSION) + ' · Docs ' + sanitize(STATE.manifestVersion) + (stale ? ' · <span class="badge badge--warn">Update recommended</span>' : '');
+  var flags = getUpdateFlags();
+  els.meta().innerHTML =
+    'App ' + sanitize(window.APP_VERSION) +
+    ' · Docs ' + sanitize(STATE.manifestVersion || '—') +
+    (flags.stale ? ' · <span class="badge badge--warn">Update recommended</span>' : '');
 }
 
 function renderTagChips() {
@@ -145,7 +155,7 @@ function renderSections() {
     head.className = 'section-head';
 
     var spacer = document.createElement('div');
-    spacer.style.minHeight = '1px'; // keeps layout spacing without an empty CSS rule
+    spacer.style.minHeight = '1px';
 
     var countChip = document.createElement('span');
     countChip.className = 'chip chip--count';
@@ -215,7 +225,7 @@ async function prefetchAll() {
 
   STATE.lastDownloadedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, String(STATE.lastDownloadedAt));
-  localStorage.setItem(STORAGE_VERSION_KEY, STATE.manifestVersion); // save the manifest version we just downloaded
+  localStorage.setItem(STORAGE_VERSION_KEY, STATE.manifestVersion); // track the version that was downloaded
   renderMeta();
   reflectCacheFreshness();
   showProgress(false);
@@ -282,17 +292,18 @@ function clearAllCachesHard() {
 }
 
 function reflectCacheFreshness() {
-  var lastVersion = localStorage.getItem(STORAGE_VERSION_KEY);
-  var versionMismatch = lastVersion && lastVersion !== STATE.manifestVersion;
-  var stale = isStale(STATE.lastDownloadedAt) || !!versionMismatch;
-
+  var flags = getUpdateFlags();
   var btn = els.btnDownload();
-  if (stale) {
+  if (flags.stale) {
     btn.classList.add('badge', 'badge--warn');
     btn.textContent = 'Download Docs (Update recommended)';
+    // Optional: show details on hover
+    var lastVersion = normalizeVersion(localStorage.getItem(STORAGE_VERSION_KEY)) || '—';
+    btn.title = 'Cached version: ' + lastVersion + ' • Current manifest: ' + (STATE.manifestVersion || '—');
   } else {
     btn.classList.remove('badge', 'badge--warn');
     btn.textContent = 'Download Docs';
+    btn.title = '';
   }
 }
 
@@ -300,6 +311,11 @@ function isStale(ts) {
   if (!ts) return true;
   var ageDays = (Date.now() - ts) / (1000 * 60 * 60 * 24);
   return ageDays > STALE_DAYS;
+}
+
+function normalizeVersion(v) {
+  if (v == null) return '';
+  return String(v).trim();
 }
 
 function sanitize(s) {
