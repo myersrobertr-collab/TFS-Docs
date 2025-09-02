@@ -5,7 +5,7 @@
    - Basic Range passthrough for PDF viewers
 */
 
-const SW_VERSION = 'tfs-sw-v9';
+const SW_VERSION = 'Test.Ver.2';
 const ASSET_CACHE = `assets-${SW_VERSION}`;
 const ASSET_EXTS = ['.js', '.css', '.html', '.webmanifest', '.png', '.jpg', '.jpeg', '.svg', '.ico'];
 
