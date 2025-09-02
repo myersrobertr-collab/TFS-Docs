@@ -1,150 +1,152 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TFS Documents</title>
+// ===== Globals =====
+const APP_VERSION  = window.APP_VERSION || "dev";
+const MANIFEST_URL = window.MANIFEST_URL || "docs/manifest.json";
+const CACHE_NAME   = window.CACHE_NAME || ("tfs-docs-" + APP_VERSION);
 
-  <!-- PWA manifest -->
-  <link rel="manifest" href="app.webmanifest" />
+let TAGS = [];
+let DOCS = [];
+let SELECTED = localStorage.getItem("tfs.selectedTag") || "All";
 
-  <!-- One-stop config: bump this to force-refresh the app shell -->
-  <script>
-    window.APP_VERSION  = "2025.9.20";                  // ⬅️ update to bust caches for app shell
-    window.MANIFEST_URL = "docs/manifest.json";         // manifest with sections/tags
-    window.CACHE_NAME   = "tfs-docs-" + window.APP_VERSION;
-  </script>
+// ===== Boot =====
+document.getElementById("appVerText").textContent = APP_VERSION;
+document.getElementById("dlProg").style.width = "0%";
 
-  <!-- iOS standalone looks -->
-  
-  <meta name="theme-color" content="#0b0f19" />
+// Register SW (optional but recommended for offline)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
 
-  <style>
-    :root{
-      --bg:#0b0f19; --card:#111827; --muted:#9ca3af; --text:#e5e7eb;
-      --line:#1f2937; --chip:#1f2937; --chipHover:#253041; --accent:#2563eb;
-      --emer:#E4002B; --btn:#1f2937; --btnText:#f9fafb; --ring:#334155;
+loadDocs();
+
+async function loadDocs() {
+  try {
+    const r = await fetch(`${MANIFEST_URL}?v=${encodeURIComponent(APP_VERSION)}`, { cache:"no-cache" });
+    if (!r.ok) throw new Error("manifest fetch failed");
+    const m = await r.json();
+
+    // versions
+    if (m.version) {
+      const el = document.getElementById("manVer");
+      document.getElementById("manVerText").textContent = m.version;
+      el.style.display = "inline-block";
+      const prev = localStorage.getItem("tfs.manifestVersion");
+      if (prev && prev !== m.version) {
+        // light hint—flash appVer chip
+        const av = document.getElementById("appVer");
+        av.style.boxShadow = "0 0 0 2px #22c55e inset";
+        setTimeout(()=>{ av.style.boxShadow="none"; }, 1800);
+      }
+      localStorage.setItem("tfs.manifestVersion", m.version);
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
 
-    .wrap{max-width:1100px;margin:0 auto;padding:16px 18px 40px}
+    TAGS = ["All", ...(Array.isArray(m.tagMeta) ? m.tagMeta : [])];
+    DOCS = Array.isArray(m.sections) ? m.sections : [];
 
-    /* Header / banner */
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .appTitle{display:flex;align-items:center;gap:10px}
-    .appTitle h1{font-size:22px;margin:6px 0}
-    .badges{display:flex;gap:8px;flex-wrap:wrap}
-    .badge{font-size:12px;color:#cbd5e1;border:1px solid var(--line);border-radius:999px;padding:4px 8px}
-    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .btn{
-      display:inline-flex;align-items:center;justify-content:center;gap:8px;
-      background:var(--btn);color:var(--btnText);text-decoration:none;border:1px solid var(--line);
-      border-radius:12px;padding:.65rem .9rem;font-weight:700;min-width:170px;
+  } catch (e) {
+    console.warn("Using fallback manifest", e);
+    TAGS = ["All"];
+    DOCS = [{ title:"MISC", items:[] }];
+  }
+  renderChips();
+  renderSections();
+  wireDownload();
+}
+
+// ===== Render chips =====
+function renderChips() {
+  const host = document.getElementById("chips");
+  host.innerHTML = "";
+  TAGS.forEach(tag => {
+    const b = document.createElement("button");
+    b.className = "chip" + (tag === "EMER" ? " chip-emer" : "");
+    if (tag === SELECTED) b.classList.add("active");
+    b.textContent = tag;
+    b.onclick = () => {
+      SELECTED = tag;
+      localStorage.setItem("tfs.selectedTag", SELECTED);
+      renderChips();
+      renderSections();
+    };
+    host.appendChild(b);
+  });
+}
+
+// ===== Render sections =====
+function renderSections() {
+  const host = document.getElementById("sections");
+  host.innerHTML = "";
+
+  const match = (sec) => {
+    if (SELECTED === "All") return true;
+    const tags = Array.isArray(sec.tags) ? sec.tags : [];
+    return tags.includes(SELECTED);
+  };
+
+  DOCS.filter(match).forEach(sec => {
+    const isEmer = (sec.tags || []).includes("EMER");
+
+    const secEl = document.createElement("section");
+    secEl.className = "section";
+
+    const h = document.createElement("h2");
+    h.className = isEmer ? "sectionTitle title-emer" : "sectionTitle";
+    h.textContent = sec.title || "";
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = (sec.items?.length || 0) + " docs";
+    h.appendChild(badge);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    (sec.items || []).forEach(it => {
+      const card = document.createElement("div");
+      card.className = "card" + (isEmer ? " card-emer" : "");
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = it.desc || " ";
+      const a = document.createElement("a");
+      a.className = "btn" + (isEmer ? " btn-emer" : "");
+      a.href = it.href;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = it.label || "Open";
+      card.append(label, a);
+      grid.appendChild(card);
+    });
+
+    secEl.append(h, grid);
+    host.appendChild(secEl);
+  });
+}
+
+// ===== Offline download =====
+function wireDownload() {
+  const btn  = document.getElementById("dlBtn");
+  const prog = document.getElementById("dlProg");
+
+  btn.onclick = async () => {
+    // Build unique URL list
+    const urls = new Set([
+      "./", "index.html", "app.webmanifest", "sw.js"
+    ]);
+    DOCS.forEach(sec => (sec.items||[]).forEach(it => urls.add(it.href)));
+
+    // Prefetch with progress
+    const all = Array.from(urls);
+    const cache = await caches.open(CACHE_NAME);
+    let done = 0;
+
+    // To make progress visible, stream via fetch then cache.put
+    for (const u of all) {
+      try {
+        const res = await fetch(u, { cache:"no-cache" });
+        if (res.ok) await cache.put(new Request(u), res.clone());
+      } catch (_) {}
+      done++;
+      prog.style.width = Math.round(done / all.length * 100) + "%";
     }
-    .btn:hover{filter:brightness(1.05)}
-    .btn.primary{background:var(--accent);border-color:var(--accent)}
-    .btn.square{border-radius:10px} /* a bit squarer per request */
-
-    .bar{margin:14px 0 16px;border-top:1px solid var(--line)}
-
-    /* “New docs available” banner */
-    .updateBanner{
-      display:none;align-items:center;gap:10px;background:#102233;border:1px solid var(--line);
-      padding:10px 12px;border-radius:12px;margin:0 0 10px;
-    }
-    .updateBanner.show{display:flex}
-    .updateBanner .pill{font-size:11px;border:1px solid #2b3c55;border-radius:999px;padding:2px 8px;color:#cbd5e1}
-
-    /* Tag chips row */
-    .tags{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
-    .chip{
-      background:transparent;border:1px solid var(--chip);color:#cbd5e1;
-      border-radius:999px;padding:6px 10px;font-weight:600;cursor:pointer;
-    }
-    .chip:hover{background:var(--chipHover)}
-    .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
-    .chip.emer{border-color:var(--emer);color:var(--emer)}
-    .chip.emer:hover{background:rgba(228,0,43,.08)}
-    .chip.emer.active{background:var(--emer);border-color:var(--emer);color:#fff}
-
-    /* Sections & cards */
-    .section{margin:18px 0}
-    .sectionHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .sectionHead h2{font-size:16px;margin:0;color:#cbd5e1}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:560px){.grid{grid-template-columns:1fr}}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
-    .card.emer{background:#2a0a11;border-color:var(--emer)}
-    .card h3{font-size:14px;margin:0 0 8px}
-    .btnRow{display:flex;flex-direction:column;gap:8px}
-    .docBtn{
-      display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
-      background:#0f172a;color:#fff;border:1px solid #243041;border-radius:12px;
-      padding:10px 12px;font-weight:700;
-    }
-    .docBtn:hover{filter:brightness(1.06)}
-    .docBtn.small{padding:9px 11px;border-radius:11px} /* smaller & tidy */
-    .docBtn.emer{background:var(--emer);border-color:var(--emer);color:#fff}
-
-    /* Status/progress */
-    .status{margin:12px 0}
-    .progress{height:8px;background:#0f172a;border:1px solid #243041;border-radius:999px;overflow:hidden}
-    .barInner{height:100%;width:0%;background:var(--accent);transition:width .18s ease}
-
-    /* Muted text */
-    .muted{color:var(--muted);font-size:13px}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <!-- update banner -->
-    <div id="updateBanner" class="updateBanner">
-      <span class="pill">Update</span>
-      <span>New documents are available.</span>
-      <a id="reloadBtn" class="btn square" style="min-width:auto;padding:.4rem .7rem">Reload</a>
-    </div>
-
-    <header>
-      <div class="appTitle">
-        <h1>🗂️ TFS Documents</h1>
-        <div class="badges">
-          <span id="codeVersion" class="badge">App v—</span>
-          <span id="manifestVersion" class="badge">Docs v—</span>
-        </div>
-      </div>
-      <div class="controls">
-        <a id="offlineBtn" class="btn primary square">Download for offline</a>
-      </div>
-    </header>
-
-    <div class="bar"></div>
-
-    <!-- Tag chips -->
-    <div id="tagBar" class="tags"></div>
-
-    <!-- Progress/status -->
-    <div class="status" id="statusArea" style="display:none">
-      <div class="muted" id="statusText">Preparing…</div>
-      <div class="progress"><div class="barInner" id="progressBar"></div></div>
-    </div>
-
-    <!-- Sections render here -->
-    <div id="sections"></div>
-  </div>
-
-  <!-- App code -->
-  <script defer src="app.js?v=@APP_VERSION@"></script>
-  <script>
-    // Swap token with APP_VERSION to help cache-bust app.js
-    (function(){
-      const s = document.querySelector('script[src*="app.js?v=@APP_VERSION@"]');
-      if (s) s.src = s.src.replace('@APP_VERSION@', encodeURIComponent(window.APP_VERSION));
-      // Display code version immediately
-      document.getElementById('codeVersion').textContent = 'App v' + window.APP_VERSION;
-    })();
-  </script>
-</body>
-</html>
+    // brief completion flash
+    setTimeout(()=>{ prog.style.width = "0%"; }, 1200);
+  };
+}
