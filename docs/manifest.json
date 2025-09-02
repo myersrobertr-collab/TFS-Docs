@@ -18,7 +18,7 @@
       "items": [
         { "label": "G280 MEL",               "href": "docs/G280 MEL.pdf",               "tags": ["G280", "Manuals"] },
         { "label": "G280 Norm Checklist",    "href": "docs/G280 Norm Checklist.pdf",    "tags": ["G280", "Manuals"] },
-        { "label": "G280 Cold WX Ops",       "href": "docs/G280 Cold WX Ops.pdf",       "tags": ["G280", "Misc"] },
+        { "label": "G280 Cold WX Ops",       "href": "docs/G280 Cold WX.pdf",       "tags": ["G280", "Misc"] },
         { "label": "G280 Flight Plan Codes", "href": "docs/G280 FLT Plan Codes.pdf",    "tags": ["G280", "Admin"] }
       ]
     },
