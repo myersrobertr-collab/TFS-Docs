@@ -60,7 +60,7 @@
     
     {
       "title": "Checklists",
-      "tags": ["Checklists],
+      "tags": ["Checklists"],
       "items": [
            { "label": "Short Flight Segment",  "href": "docs/Short Flight Segment.pdf",    "tags": ["Checklists"] },
            { "label": "Local Area",  "href": "docs/G280 Local Area Checklist.pdf",         "tags": ["Checklists"] },
